@@ -621,6 +621,14 @@ Description of the fields inside *attr_list*
 
 > **attr_len**: Length of the SysFS attribute in bytes.
 
+> **attr_data_format**: The format used for numerical data. It can be linear11, linear16, or direct.
+
+> **attr_m**: The m coefficient value used in the case when the data format is direct.
+
+> **attr_b**: The b coefficient value used in the case when the data format is direct.
+
+> **attr_r**: The r coefficient value used in the case when the data format is direct.
+
 
 
 ```
@@ -644,6 +652,16 @@ Description of the fields inside *attr_list*
 				"attr_mask":"0x0",
 				"attr_len":"9"
 			},
+      {
+        "attr_name": "psu_v_out",
+        "attr_devaddr": "0x58",
+        "attr_devtype": "pmbus",
+        "attr_offset": "0x8b",
+        "attr_mask": "0x0",
+        "attr_cmpval": "0xff",
+        "attr_data_format": "linear16",
+        "attr_len": "2"
+      },
 		...
         ]
     }
