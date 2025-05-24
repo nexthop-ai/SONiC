@@ -621,13 +621,13 @@ Description of the fields inside *attr_list*
 
 > **attr_len**: Length of the SysFS attribute in bytes.
 
-> **attr_data_format**: The format used for numerical data. It can be linear11, linear16, or direct. Optional field, defaults to linear11 if not provided.
+> **attr_data_format**: The PMBus numerical data encoding format. Can be linear11, linear16, or direct. Optional field, defaults to linear11 if not provided.
 
-> **attr_m**: The m coefficient value used in the case when the data format is direct. Optional field, only used in the case when attr_data_format is 'direct'.
+> **attr_m**: The PMBus m coefficient value. Optional field, only supply when attr_data_format is direct.
 
-> **attr_b**: The b coefficient value used in the case when the data format is direct. Optional field, only used in the case when attr_data_format is 'direct'.
+> **attr_b**: The PMBus b coefficient value. Optional field, only supply when attr_data_format is direct.
 
-> **attr_r**: The r coefficient value used in the case when the data format is direct. Optional field, only used in the case when attr_data_format is 'direct'.
+> **attr_r**: The PMBus r coefficient value. Optional field, only supply when attr_data_format is direct.
 
 
 
