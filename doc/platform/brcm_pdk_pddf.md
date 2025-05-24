@@ -652,16 +652,16 @@ Description of the fields inside *attr_list*
 				"attr_mask":"0x0",
 				"attr_len":"9"
 			},
-      {
-        "attr_name": "psu_v_out",
-        "attr_devaddr": "0x58",
-        "attr_devtype": "pmbus",
-        "attr_offset": "0x8b",
-        "attr_mask": "0x0",
-        "attr_cmpval": "0xff",
-        "attr_data_format": "linear16",
-        "attr_len": "2"
-      },
+			{
+				"attr_name": "psu_v_out",
+				"attr_devaddr": "0x58",
+				"attr_devtype": "pmbus",
+				"attr_offset": "0x8b",
+				"attr_mask": "0x0",
+				"attr_cmpval": "0xff",
+				"attr_data_format": "linear16",
+				"attr_len": "2"
+			},
 		...
         ]
     }
