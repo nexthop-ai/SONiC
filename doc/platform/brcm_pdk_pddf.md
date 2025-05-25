@@ -621,7 +621,7 @@ Description of the fields inside *attr_list*
 
 > **attr_len**: Length of the SysFS attribute in bytes.
 
-> **attr_data_format**: The PMBus numerical data encoding format. Can be `linear11`, `linear16`, or `direct`. Optional field, defaults to `linear11` if not provided.
+> **attr_data_format**: The PMBus numerical data encoding format. Can be `linear11`, `linear16`, or `direct` (refer to [PMBus 1.3.1 section 7](https://pmbusprod.wpenginepowered.com/wp-content/uploads/2022/01/PMBus-Specification-Rev-1-3-1-Part-II-20150313.pdf)). Optional field, defaults to `linear11` if not provided.
 
 > **attr_m**: The PMBus `m` coefficient value (refer to [PMBus 1.3.1 section 7.4.1](https://pmbusprod.wpenginepowered.com/wp-content/uploads/2022/01/PMBus-Specification-Rev-1-3-1-Part-II-20150313.pdf)). Set `m` if and only if `attr_data_format` is `direct`.
 
@@ -656,7 +656,6 @@ Description of the fields inside *attr_list*
         ]
     }
 },
-
 "PSU1-PMBUS": {
 	"i2c": {
 		"attr_list": [
@@ -693,10 +692,8 @@ Description of the fields inside *attr_list*
 				"attr_len": "2"
 			},
 			...
-		],
-		...
-	},
-	...
+		]
+	}
 },
 ```
 
