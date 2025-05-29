@@ -691,7 +691,7 @@ Description of the fields inside *attr_list*
 				"attr_data_r": "0",
 				"attr_len": "2"
 			},
-		...
+			...
 		]
 	}
 },
