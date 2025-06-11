@@ -1,4 +1,4 @@
-# **Single VOQ SONiC** {#single-voq-sonic}
+# **Single ASIC VOQ SONiC** {#single-asic-voq-sonic}
 
 # **High Level Design Document** {#high-level-design-document}
 
@@ -6,7 +6,7 @@
 
 # **Table of Contents** {#table-of-contents}
 
-[Single VOQ SONiC](#single-voq-sonic)
+[Single ASIC VOQ SONiC](#single-asic-voq-sonic)
 
 [High Level Design Document](#high-level-design-document)
 
@@ -48,7 +48,7 @@
 
 [2.1.4 Config Generation Changes](#2.1.4-config-generation-changes)
 
-[2.2 Separate Switch Type for Single VOQ (“single-asic-voq”)](#2.2-separate-switch-type-for-single-voq-\(“single-asic-voq”\))
+[2.2 Separate Switch Type for Single ASIC VOQ (“single-asic-voq”)](#2.2-separate-switch-type-for-single-asic-voq-\(“single-asic-voq”\))
 
 [2.2.1 Orchagent, Bgpconfd Changes](#2.2.1-orchagent,-bgpconfd-changes)
 
@@ -62,7 +62,7 @@
 
 | Rev | Date | Author | Change Description |
 | ----- | ----- | ----- | ----- |
-| 1.0 | 06/10/2025 |  | Initial public version |
+| 1.0 | 06/10/2025 | Eswaran Baskaran[Lakshmi Yarramaneni](mailto:lakshmi@nexthop.ai) | Initial public version |
 
 # **About this Manual** {#about-this-manual}
 
@@ -100,7 +100,7 @@ iBGP configuration that was generated for chassis-based VOQ systems is not neede
 - Support line card extensions only on Chassis VOQ system but not on single-ASIC VOQ  
 - Differentiate between internal and external BGP neighbors on Chassis VOQ only  
 - Fabric port status should only be retrieved from Chassis DB on Chassis VOQ systems but not on single-ASIC VOQ system  
-- Multi ASIC checks must evaluate to false on single VOQ
+- Multi ASIC checks must evaluate to false on single ASIC VOQ
 
   ### **1.3.4 Sonic-host-services Caclmgrd** {#1.3.4-sonic-host-services-caclmgrd}
 
@@ -133,9 +133,9 @@ This method reuses the VOQ switch type for non chassis systems as well. This mea
 - All the FRR, BGP, buffers, QOS j2 templates need to generate config for VOQ. And generate config for chassis (only if chassis config is present).  
   Need a way to check for chassis config from a j2 template 
 
-### **2.2 Separate Switch Type for Single VOQ (“single-asic-voq”)** {#2.2-separate-switch-type-for-single-voq-(“single-asic-voq”)}
+### **2.2 Separate Switch Type for Single ASIC VOQ (“single-asic-voq”)** {#2.2-separate-switch-type-for-single-asic-voq-(“single-asic-voq”)}
 
-Create a new switch type to represent single VOQ (single-asic-voq). This approach will retain the current assumption that the VOQ system is always a chassis.
+Create a new switch type to represent a single ASIC VOQ system (single-asic-voq). This approach will retain the current assumption that the VOQ system is always a chassis.
 
 ### **2.2.1 Orchagent, Bgpconfd Changes** {#2.2.1-orchagent,-bgpconfd-changes}
 
