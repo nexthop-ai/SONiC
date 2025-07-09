@@ -60,7 +60,7 @@ azure-team@nexthop.ai
 | ----- | ----- | ----- | ----- |
 | 1.0 | 06/10/2025 | Eswaran Baskaran[Lakshmi Yarramaneni](mailto:lakshmi@nexthop.ai) | Initial public version |
 | 1.1 | 06/23/2025 | Lakshmi Yarramaneni | Details on single-ASIC VOQ flag |
-| 1.2 | 6/1/2025 | Lakshmi Yarramaneni | Updated to use chassis config file |
+| 1.2 | 7/1/2025 | Lakshmi Yarramaneni | Updated to use chassis config file |
 
 # **About this Manual** {#about-this-manual}
 
@@ -68,7 +68,7 @@ This document describes the design details for supporting SONiC on a single-ASIC
 
 # **Scope** {#scope}
 
-This specification focussed on how to support VOQ switch functionality on single-ASIC VOQ. And understand the impact on various Sonic modules in single-ASIC vs. chassis based.
+This specification focuses on how to support VOQ switch functionality on single-ASIC VOQ and understand the impact on various Sonic modules in single-ASIC vs. chassis.
 
 # **1 Requirements Overview** {#1-requirements-overview}
 
@@ -91,7 +91,7 @@ iBGP configuration that was generated for chassis-based VOQ systems is not neede
   ### **1.3.2 Bgpconfd** {#1.3.2-bgpconfd}
 
 - Spawn off ChassisDbMgr only on Chassis VOQ system but not on single-ASIC VOQ  
-- Handle TSA only on chassis VOQ and not on single-ASIC VOQ
+- Handle TSA (Traffic Shift Away) only on chassis VOQ and not on single-ASIC VOQ
 
   ### **1.3.3 Sonic-utilities** {#1.3.3-sonic-utilities}
 
@@ -102,7 +102,7 @@ iBGP configuration that was generated for chassis-based VOQ systems is not neede
 
   ### **1.3.4 Sonic-host-services Caclmgrd** {#1.3.4-sonic-host-services-caclmgrd}
 
-- Should support midplane traffic only on Chassis VOQ system
+- Support midplane traffic only on Chassis VOQ system
 
 # **2 Modules Design** {#2-modules-design}
 
