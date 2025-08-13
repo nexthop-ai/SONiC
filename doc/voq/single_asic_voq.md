@@ -1,18 +1,3 @@
-<<<<<<< HEAD
-# **Single VOQ SONiC** {#single-voq-sonic}
-
-# **High Level Design Document** {#high-level-design-document}
-
-### **Rev 1.0** {#rev-1.0}
-
-# **Table of Contents** {#table-of-contents}
-
-[Single VOQ SONiC](#single-voq-sonic)
-
-[High Level Design Document](#high-level-design-document)
-
-[Rev 1.0](#rev-1.0)
-=======
 # **Single ASIC VOQ Fixed System SONiC** 
 
 # **High Level Design Document** 
@@ -28,7 +13,6 @@ azure-team@nexthop.ai
 [High Level Design Document]
 
 [Rev 1.0](#heading=h.snl1xsdxyqtx)
->>>>>>> e637bd9619aacc185fc3ee68ac7397e512cbbaff
 
 [Table of Contents](#table-of-contents)
 
@@ -58,64 +42,6 @@ azure-team@nexthop.ai
 
 [2.1 Switch Type “VOQ” For Both Chassis and Single-ASIC cases](#2.1-switch-type-“voq”-for-both-chassis-and-single-asic-cases)
 
-<<<<<<< HEAD
-[2.1.1 Orchagent, Bgpconfd Changes](#2.1.1-orchagent,-bgpconfd-changes)
-
-[2.1.2 Sonic-utilities, Sonic-host-services/Caclmgrd Changes](#2.1.2-sonic-utilities,-sonic-host-services/caclmgrd-changes)
-
-[2.1.3 CLI Changes](#2.1.3-cli-changes)
-
-[2.1.4 Config Generation Changes](#2.1.4-config-generation-changes)
-
-[2.2 Separate Switch Type for Single VOQ (“single-asic-voq”)](#2.2-separate-switch-type-for-single-voq-\(“single-asic-voq”\))
-
-[2.2.1 Orchagent, Bgpconfd Changes](#2.2.1-orchagent,-bgpconfd-changes)
-
-[2.2.2 Sonic-utilities, Sonic-host-services/Caclmgrd Changes](#2.2.2-sonic-utilities,-sonic-host-services/caclmgrd-changes)
-
-[2.2.3 CLI Changes](#2.2.3-cli-changes)
-
-[2.2.4 Config Generation Changes](#2.2.4-config-generation-changes)
-
-###### **Revision** {#revision}
-
-| Rev | Date | Author | Change Description |
-| ----- | ----- | ----- | ----- |
-| 1.0 | 06/10/2025 |  | Initial public version |
-
-# **About this Manual** {#about-this-manual}
-
-This document describes the design details for supporting SONiC on a single-ASIC VOQ System. 
-
-# **Scope** {#scope}
-
-This specification focussed on how to support VOQ switch functionality on single-ASIC VOQ systems. And understand the impact on various Sonic modules in single-ASIC vs. chassis based.
-
-# **1 Requirements Overview** {#1-requirements-overview}
-
-## **1.1 Functional Requirements** {#1.1-functional-requirements}
-
-The single-ASIC VOQ implementation shall support VOQ mode without relying on the presence of Chassis DB.
-
-## **1.2 Configuration requirements** {#1.2-configuration-requirements}
-
-iBGP configuration that was generated for chassis-based VOQ systems is not needed in single-ASIC VOQ systems. QoS configuration that was generated for system ports continues to be needed for single-ASIC VOQ systems. 
-
-## **1.3 Agent requirements** {#1.3-agent-requirements}
-
-### **1.3.1 Orchagent** {#1.3.1-orchagent}
-
-- Support VOQ and single-ASIC VOQ systems  
-  - Interface with Chassis DB in Chassis VOQ system but not in a single-ASIC VOQ system  
-  - Enable and manage fabric ports for single ASIC VOQ
-
-  ### **1.3.2 Bgpconfd** {#1.3.2-bgpconfd}
-
-- Spawn off ChassisDbMgr only on Chassis VOQ system but not on single-ASIC VOQ system  
-- Handle TSA only on chassis VOQ and not on single-ASIC VOQ
-
-  ### **1.3.3 Sonic-utilities** {#1.3.3-sonic-utilities}
-=======
 [2.1.1 Orchagent Changes](#2.1.1-orchagent-changes)
 
 [2.1.2 Bgpconfd Changes](#2.1.2-bgpconfd-changes)
@@ -174,69 +100,10 @@ We do not need to create the inband port or the recirculation port in single-asi
 - Handle TSA (Traffic Shift Away) only on chassis VOQ and not on single-ASIC VOQ
 
   ### **1.4.3 Sonic-utilities** 
->>>>>>> e637bd9619aacc185fc3ee68ac7397e512cbbaff
 
 - Support line card extensions only on Chassis VOQ system but not on single-ASIC VOQ  
 - Differentiate between internal and external BGP neighbors on Chassis VOQ only  
 - Fabric port status should only be retrieved from Chassis DB on Chassis VOQ systems but not on single-ASIC VOQ system  
-<<<<<<< HEAD
-- Multi ASIC checks must evaluate to false on single VOQ
-
-  ### **1.3.4 Sonic-host-services Caclmgrd** {#1.3.4-sonic-host-services-caclmgrd}
-
-- Should support midplane traffic only on Chassis VOQ system
-
-# **2 Modules Design** {#2-modules-design}
-
-There are 2 approaches to support VOQ mode in single ASIC systems. They are described in sections 2.1 and 2.2 below.
-
-### **2.1 Switch Type “VOQ” For Both Chassis and Single-ASIC cases** {#2.1-switch-type-“voq”-for-both-chassis-and-single-asic-cases}
-
-This method reuses the VOQ switch type for non chassis systems as well. This means the agents, utilities and CLI config tools will need to differentiate between chassis system vs non chassis by checking for the presence of the chassis db config file. (/usr/share/sonic/device/$platform/chassisdb.conf)
-
-### **2.1.1 Orchagent, Bgpconfd Changes** {#2.1.1-orchagent,-bgpconfd-changes}
-
-- Copy chassisdb.conf to Orchagent, Bgpconfd containers  
-- Orchagent will handle VOQ functionality the same way. But connect to Chassis DB only if chassis config is present  
-- Bgpconfd will create ChassisDB manager only if chassis config is present
-
-### **2.1.2 Sonic-utilities, Sonic-host-services/Caclmgrd Changes** {#2.1.2-sonic-utilities,-sonic-host-services/caclmgrd-changes}
-
-- Update ***sonic-py-common/device\_info.is\_chassis()*** to check for chassis config file
-
-### **2.1.3 CLI Changes** {#2.1.3-cli-changes}
-
-- Display “*show chassis*” command output only if ***is\_chassis/is\_voq\_chassis()*** true.
-
-### **2.1.4 Config Generation Changes** {#2.1.4-config-generation-changes}
-
-- All the FRR, BGP, buffers, QOS j2 templates need to generate config for VOQ. And generate config for chassis (only if chassis config is present).  
-  Need a way to check for chassis config from a j2 template 
-
-### **2.2 Separate Switch Type for Single VOQ (“single-asic-voq”)** {#2.2-separate-switch-type-for-single-voq-(“single-asic-voq”)}
-
-Create a new switch type to represent single VOQ (single-asic-voq). This approach will retain the current assumption that the VOQ system is always a chassis.
-
-### **2.2.1 Orchagent, Bgpconfd Changes** {#2.2.1-orchagent,-bgpconfd-changes}
-
-- Orchagent will handle VOQ and SingleVOQ the same way.   
-- Orchagent will connect to Chassis DB for VOQ switch type  
-- Bgpconfd will create ChassisDbMgr only on VOQ switch type
-
-### **2.2.2 Sonic-utilities, Sonic-host-services/Caclmgrd Changes** {#2.2.2-sonic-utilities,-sonic-host-services/caclmgrd-changes}
-
-- No change
-
-### **2.2.3 CLI Changes** {#2.2.3-cli-changes}
-
-- Display “*show chassis*” command output only if ***is\_chassis/is\_voq\_chassis()*** true.
-
-### **2.2.4 Config Generation Changes** {#2.2.4-config-generation-changes}
-
-- No change needed to BGP j2 templates  
-- All QOS j2 templates need to generate config for single-ASIC VOQ switch type also  
-- Port and Qos yang models will need to include a single-asic-voq switch type also.
-=======
 - Multi ASIC checks must evaluate to false on single ASIC VOQ
 
   ### **1.4.4 Sonic-host-services Caclmgrd** 
@@ -276,5 +143,4 @@ API *is\_voq\_chassis* will check for the presence of the *chassisdb.conf* file.
 We do not generate config for chassis if the system is not a chassis system. eg. internal iBGP peering config is not needed in single-ASIC VOQ.
 
 We will add a new system_port_config.ini to the platform directory that lists all ports (including CPU ports) and their core mapping. This can be used to generate the SYSTEM_PORT table in the config_db based on the configured ports. 
->>>>>>> e637bd9619aacc185fc3ee68ac7397e512cbbaff
 
