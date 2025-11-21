@@ -91,9 +91,8 @@ show hwsku profiles
 Platform: x86_64-nexthop_4010-r1
 
 Available HWSKU Profiles:
-  * NH-4010 (current)
-  - NH-4010-128x400G-2x25G
-  - NH-4020
+  * Nexthop-4010 (current)
+  - Nexthop-4010-128x400G-2x25G
 ```
 
 **Help Text:**
@@ -122,44 +121,44 @@ config hwsku load <hwsku_name> [-y] [-r]
 
 **Interactive Mode Example:**
 ```bash
-admin@sonic:~$ sudo config hwsku load NH-4010-128x400G-2x25G
+admin@sonic:~$ sudo config hwsku load Nexthop-4010-128x400G-2x25G
 
 This will:
-  1. Backup current config to /etc/sonic/backup_config/NH-4010_20251118_143022.json
-  2. Generate new config for HWSKU 'NH-4010-128x400G-2x25G'
+  1. Backup current config to /etc/sonic/backup_config/Nexthop-4010_20251118_143022.json
+  2. Generate new config for HWSKU 'Nexthop-4010-128x400G-2x25G'
   3. Skip reload (you will need to manually reload)
 
 Do you want to continue? [y/N]: y
 
-Loading hardware SKU: NH-4010-128x400G-2x25G
+Loading hardware SKU: Nexthop-4010-128x400G-2x25G
 Config generated successfully
 
-Hardware SKU 'NH-4010-128x400G-2x25G' config generated successfully!
-Backup saved to: /etc/sonic/backup_config/NH-4010_20251118_143022.json
+Hardware SKU 'Nexthop-4010-128x400G-2x25G' config generated successfully!
+Backup saved to: /etc/sonic/backup_config/Nexthop-4010_20251118_143022.json
 
 To apply the new configuration, run: config reload -y
 ```
 
 **Auto-confirm and Reload Example:**
 ```bash
-admin@sonic:~$ sudo config hwsku load NH-4010-128x400G-2x25G -y -r
+admin@sonic:~$ sudo config hwsku load Nexthop-4010-128x400G-2x25G -y -r
 
-Loading hardware SKU: NH-4010-128x400G-2x25G
+Loading hardware SKU: Nexthop-4010-128x400G-2x25G
 Config generated successfully
 Reloading configuration...
 
-Hardware SKU 'NH-4010-128x400G-2x25G' loaded successfully!
+Hardware SKU 'Nexthop-4010-128x400G-2x25G' loaded successfully!
 Configuration reloaded.
-Backup saved to: /etc/sonic/backup_config/NH-4010_20251118_143022.json
+Backup saved to: /etc/sonic/backup_config/Nexthop-4010_20251118_143022.json
 ```
 
 **Autocomplete Feature:**
 ```bash
-admin@sonic:~$ sudo config hwsku load NH-<TAB>
-NH-4010  NH-4010-128x400G-2x25G  NH-4020
+admin@sonic:~$ sudo config hwsku load Nexthop-<TAB>
+Nexthop-4010  Nexthop-4010-128x400G-2x25G  Nexthop-4020
 
-admin@sonic:~$ sudo config hwsku load NH-4010-<TAB>
-NH-4010-128x400G-2x25G
+admin@sonic:~$ sudo config hwsku load Nexthop-4010-<TAB>
+Nexthop-4010-128x400G-2x25G
 ```
 
 **Help Text:**
@@ -197,6 +196,20 @@ This feature is implemented as a built-in SONiC CLI extension within the sonic-u
 
 The feature integrates seamlessly with the existing Click-based CLI framework and follows established SONiC CLI patterns.
 
+**Important Note on Configuration Impact:**
+
+When loading a new HWSKU configuration, the `sonic-cfggen` tool generates a completely new configuration file (`/etc/sonic/config_db.json`) based on the selected HWSKU profile. This operation **removes some of the entire existing configuration**, including:
+
+- **Non-port configurations**: Logging settings, VLANs, ACLs, BGP configurations, interface IP addresses, and any other custom configurations
+
+The current configuration is automatically backed up to `/etc/sonic/backup_config/` before any changes are made, allowing for manual restoration if needed. Users should be aware that after loading a new HWSKU:
+
+1. All previous configurations (both port and non-port related) will be replaced with the default configuration for the new HWSKU
+2. Custom configurations must be manually reapplied after the HWSKU change
+3. The backup file can be used to restore the previous configuration if needed
+
+This behavior is by design, as HWSKU changes typically involve fundamental hardware configuration changes that require a clean configuration state.
+
 ### 8. High-Level Design
 
 #### 8.1 Modules and Sub-modules Modified
@@ -222,6 +235,7 @@ The feature integrates seamlessly with the existing Click-based CLI framework an
 - sonic_py_common.device_info (platform/HWSKU detection)
 - sonic_py_common.logger (logging)
 - sonic-cfggen (configuration generation)
+- config utility (configuration reload)
 
 **Interfaces:**
 - CLI commands exposed to users
@@ -241,7 +255,7 @@ The HWSKU information is stored in the existing `DEVICE_METADATA` table:
 {
     "DEVICE_METADATA": {
         "localhost": {
-            "hwsku": "NH-4010-128x400G-2x25G",
+            "hwsku": "Nexthop-4010-128x400G-2x25G",
             "platform": "x86_64-nexthop_4010-r1",
             "hostname": "sonic",
             "mac": "..."
@@ -278,12 +292,12 @@ No new build dependencies. Uses existing Python libraries:
 
 **Example Log Messages:**
 ```
-INFO: Loading hardware SKU: NH-4010-128x400G-2x25G (current: NH-4010)
-INFO: Backed up config to /etc/sonic/backup_config/NH-4010_20251118_143022.json
-INFO: Generated new config for HWSKU 'NH-4010-128x400G-2x25G'
-INFO: Successfully loaded HWSKU 'NH-4010-128x400G-2x25G' and reloaded config
-ERROR: HWSKU validation failed: Invalid HWSKU 'invalid-sku'
-ERROR: Failed to generate config: sonic-cfggen returned non-zero exit status
+INFO: Loading hardware SKU: Nexthop-4010-128x400G-2x25G (current: Nexthop-4010)
+INFO: Backed up config to /etc/sonic/backup_config/Nexthop-4010_20251118_143022.json
+INFO: Generated new config for HWSKU 'Nexthop-4010-128x400G-2x25G'
+INFO: Successfully loaded HWSKU 'Nexthop-4010-128x400G-2x25G' and reloaded config
+ERROR: HWSKU validation failed: Invalid HWSKU 'invalid-sku' (current HWSKU: Nexthop-4010)
+ERROR: Failed to generate config for HWSKU 'Nexthop-4010-128x400G-2x25G' (current HWSKU: Nexthop-4010): sonic-cfggen returned non-zero exit status
 ```
 
 #### 8.10 Platform-Specific Considerations
