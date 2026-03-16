@@ -212,6 +212,8 @@ This document extends and generalizes that work in the following areas:
 | Convergence acceleration | Not covered | NeighOrch direct observer for single-hop (§3.5) |
 | Multi-owner sessions | Not covered | Plain reference counting at BFDOrch prevents silent deletion on key collision (§3.7) |
 | Mass flap handling | Not covered | Event coalescing (50ms window) to reduce per-event overhead on mass DOWN events (§3.8) |
+| BFD Sustenance Mode | Not covered | BFD Partial mode support (§3.9) |
+
 
 
 
