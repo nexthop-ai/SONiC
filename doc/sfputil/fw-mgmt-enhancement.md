@@ -329,14 +329,6 @@ The implementation includes comprehensive error handling:
    - Specific failure reasons
    - Actionable guidance
 
-**Error Messages**:
-```
-Error: port 'Ethernet999' is not present
-No ports found with vendor part number: INVALID_PN
-No matching ports
-Firmware download failed for Ethernet0! - status 2
-```
-
 #### 7.8. Platform-Specific Considerations
 
 This feature is platform-agnostic and works with any platform that implements the standard SONiC Platform API for transceiver management. No platform-specific changes are required.
@@ -347,14 +339,12 @@ This feature is platform-agnostic and works with any platform that implements th
 
 #### 7.9. Scalability and Performance
 
-- **Scalability**: Supports concurrent operations on hundreds of transceivers
-- **Performance**: Parallel processing reduces total upgrade time from O(n) to O(1) for n transceivers
-- **Thread Pool**: Configurable thread pool size (default: 128 workers)
-- **Memory**: Minimal additional memory footprint (~500MB for large-scale operations)
+- **Scalability**: Supports concurrent operations on multiple transceivers
+- **Memory**: Low additional memory footprint (Less than 15 MB during firmware upgrade)
 
 #### 7.10. Warmboot and Fastboot Requirements
 
-No warmboot or fastboot dependencies. Firmware upgrade operations should not be performed during warmboot/fastboot windows.
+No warmboot or fastboot dependencies.
 
 #### 7.11. Docker Dependencies
 
@@ -432,94 +422,39 @@ Options:
 
 ##### 9.2.2. YANG Model Changes
 
-**No YANG model changes are required.** This feature is a CLI-only enhancement that does not introduce new configuration objects or state data beyond what already exists in STATE_DB.
+No YANG model changes are required.
 
 #### 9.3. Config DB Enhancements
 
-**No Config DB changes are required.** The feature does not introduce new configuration parameters. It operates on existing transceiver and port configuration.
+No Config DB changes are required.
 
 ### 10. Warmboot and Fastboot Design Impact
 
-This enhancement has **no impact** on warmboot or fastboot operations:
-
-- Firmware management operations are administrative tasks performed during maintenance windows
-- No changes to system initialization or shutdown sequences
-- No impact on data plane forwarding during boot
-- No changes to warmboot/fastboot critical paths
-- Firmware upgrades should not be performed during warmboot/fastboot operations
-
-**Recommendation**: Operators should avoid firmware upgrade operations during warmboot/fastboot windows to prevent potential service disruption.
-
-#### 10.1. Warmboot and Fastboot Performance Impact
-
-**No performance impact** on warmboot or fastboot:
-
-- This feature does not add any stalls, sleeps, or I/O operations to the boot critical chain
-- No CPU-heavy processing is added to the boot path
-- No third-party dependencies are updated that could affect boot time
-- The feature is invoked only through explicit CLI commands, not during boot
-- No services or dockers are added that would delay boot sequence
-
-**Summary**: This feature has zero impact on warmboot/fastboot performance metrics (control plane downtime, data plane downtime).
+This enhancement has **no impact** on warmboot or fastboot operations.
 
 ### 11. Memory Consumption
 
-**Memory consumption analysis:**
-
-- **Feature disabled by compilation**: Not applicable (feature is always compiled as part of sonic-utilities)
-- **Feature disabled by configuration**: No memory consumption when not in use (CLI tool is invoked on-demand)
-- **Feature in use**:
-  - Base memory: ~50MB for Python process and libraries
-  - Additional memory during multi-port operations: ~500MB maximum for 200+ concurrent operations
-  - No memory leaks or growing memory consumption
-  - Memory is released immediately after operation completes
-
-**Summary**: No persistent memory consumption. Memory is allocated only during active CLI command execution and released upon completion.
+Low additional memory footprint (Less than 15 MB during firmware upgrade).
 
 ### 12. Restrictions/Limitations
 
 #### 12.1. Current Limitations
 
-1. **CMIS Transceiver Support**:
-   - Multi-port firmware upgrade is designed for CMIS-compliant transceivers
-   - Non-CMIS transceivers may not support firmware upgrade operations
-
-2. **Concurrent Operations**:
-   - Maximum 128 concurrent upgrade operations (ThreadPoolExecutor limit)
-   - Can be adjusted based on system resources
-
-3. **Firmware File Management**:
+1. **Firmware File Management**:
    - Firmware files must be accessible on the local filesystem
    - No automatic firmware file download or repository management
 
-4. **Vendor Part Number Matching**:
+2. **Vendor Part Number Matching**:
    - Exact string match required for vendor PN filtering
    - No wildcard or regex pattern matching
 
-5. **Interface Validation**:
+3. **Interface Validation**:
    - All specified interfaces must have transceivers present
    - Operation fails if any specified port is not present
 
 #### 12.2. Operational Considerations
 
-1. **Firmware Compatibility**:
-   - Operators must ensure firmware files are compatible with target transceivers
-   - No automatic compatibility validation
-
-2. **Upgrade Duration**:
-   - Firmware upgrade can take several minutes per transceiver
-   - Multi-port operations may take significant time depending on port count
-
-3. **Network Impact**:
-   - Firmware upgrade causes transceiver reset
-   - Link down events during upgrade process
-   - Plan upgrades during maintenance windows
-
-4. **Resource Usage**:
-   - Parallel operations consume CPU and memory resources
-   - Monitor system resources during large multi-port operations
-
-5. **Error Recovery**:
+1. **Error Recovery**:
    - Automatic retry mechanism (2 attempts total)
    - Manual intervention may be required for persistent failures
 
