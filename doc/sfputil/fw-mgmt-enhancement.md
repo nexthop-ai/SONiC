@@ -174,7 +174,7 @@ sudo sfputil show fwversion --tabulate
 sudo sfputil show fwversion --interfaces Ethernet0,Ethernet4,Ethernet8
 
 # Display firmware version for all transceivers with specific part number
-sudo sfputil show fwversion --vendor-pn FTLC1157RGPL --tabulate
+sudo sfputil show fwversion --vendor-pn ALPHA123456 --tabulate
 
 # Combine filters
 sudo sfputil show fwversion --interfaces Ethernet0,Ethernet4 --tabulate
@@ -197,12 +197,12 @@ sudo sfputil firmware upgrade Ethernet0 /path/to/firmware.bin
 sudo sfputil firmware upgrade --interfaces Ethernet0,Ethernet4,Ethernet8 /path/to/firmware.bin
 
 # Upgrade firmware for all transceivers with specific part number
-sudo sfputil firmware upgrade --vendor-pn FTLC1157RGPL /path/to/firmware_v1.2.3.bin
+sudo sfputil firmware upgrade --vendor-pn ALPHA123456 /path/to/firmware_v1.2.3.bin
 
 # Multiple vendor part numbers with different firmware files
 sudo sfputil firmware upgrade \
-  --vendor-pn FTLC1157RGPL /path/to/finisar_fw.bin \
-  --vendor-pn AFBR-79EQDZ /path/to/broadcom_fw.bin
+  --vendor-pn ALPHA123456 /path/to/alpha_fw.bin \
+  --vendor-pn GAMMA67890 /path/to/gamma_fw.bin
 ```
 
 **Upgrade Process Flow**:
@@ -516,7 +516,7 @@ sudo sfputil firmware upgrade --interfaces Ethernet0,Ethernet4,Ethernet8 /tmp/te
 ```bash
 # Setup: Environment with mixed transceiver vendors
 # Execute: Upgrade all transceivers from specific vendor
-sudo sfputil firmware upgrade --vendor-pn FTLC1157RGPL /tmp/finisar_fw.bin
+sudo sfputil firmware upgrade --vendor-pn ALPHA123456 /tmp/alpha_fw.bin
 
 # Verify:
 # 1. Only matching transceivers selected
@@ -528,7 +528,7 @@ sudo sfputil firmware upgrade --vendor-pn FTLC1157RGPL /tmp/finisar_fw.bin
 **Test Scenario 3: Filtered Firmware Version Display**
 ```bash
 # Execute: Display firmware version for specific vendor
-sudo sfputil show fwversion --vendor-pn FTLC1157RGPL --tabulate
+sudo sfputil show fwversion --vendor-pn ALPHA123456 --tabulate
 
 # Verify:
 # 1. Only matching transceivers displayed
