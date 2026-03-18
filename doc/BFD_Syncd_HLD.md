@@ -26,7 +26,6 @@
     * [3.5 Convergence Acceleration](#35-convergence-acceleration)
     * [3.6 Unified BFD Architecture and StaticRouteBFD Elimination](#36-unified-bfd-architecture-and-staticroutebfd-elimination)
     * [3.7 Multi-Owner BFD Session Management](#37-multi-owner-bfd-session-management)
-    * [3.8 Mass Flap Event Coalescing](#38-mass-flap-event-coalescing)
     * [3.9 Partial BFD Offload](#39-partial-bfd-offload)
       * [3.9.1 Problem Statement](#391-problem-statement)
       * [3.9.2 Hybrid Mode in bfdd](#392-hybrid-mode-in-bfdd)
@@ -64,8 +63,7 @@
     * [10.6 sonic-mgmt Test Plan](#106-sonic-mgmt-test-plan)
     * [10.7 Multi-Owner and BFDOrch Reference Counting Tests](#107-multi-owner-and-bfdorch-reference-counting-tests)
     * [10.8 Observability and Operational Tests](#108-observability-and-operational-tests)
-    * [10.9 Event Coalescing Tests](#109-event-coalescing-tests)
-    * [10.10 Partial BFD Offload Tests](#1010-partial-bfd-offload-tests)
+    * [10.9 Partial BFD Offload Tests](#109-partial-bfd-offload-tests)
   * [11 References](#11-references)
 
 # Revision
@@ -73,7 +71,7 @@
 | Rev  | Date       | Author             | Change Description                          |
 |:----:|:----------:|:------------------:|---------------------------------------------|
 | 0.1  | 2026-02-23 | Rajshekhar Biradar | Initial version                             |
-| 0.2  | 2026-03-05 | Rajshekhar Biradar, Bao Liu, Selvamani Ramasamy, Kalash Nainwal, Kang Jiang | Add IPv6 link-local BFD support (§3.4); add hardware convergence acceleration design (§3.5); add unified BFD architecture and StaticRouteBFD elimination plan (§3.6); update DB schema (§4.4), SAI attributes (§5.1), architecture diagrams (§2.1, §2.2, §2.4), abbreviations, requirements, limitations (§8), and test cases (§10.3–§10.5); fix startup sequence ordering (subscribe before read §7.1); add SWSS restart transient suppression (§4.3); add link-local retry limits and FAILED_PERMANENT state (§3.4.4, §4.6); simplify multi-owner to plain refcount (§3.7.2); add mass flap event coalescing (§3.8); add partial BFD offload design (§3.9); add cross-client migration story (§6.1.4); add graceful shutdown with APPL_DB cleanup (§3.2.3); fix ToC gaps; restrict bfd_hw_offload YANG to bgp feature; clarify build path (§9.1/§9.2) |
+| 0.2  | 2026-03-05 | Rajshekhar Biradar, Bao Liu, Selvamani Ramasamy, Kalash Nainwal, Kang Jiang | Link-local, convergence, unified/partial offload and warm-restart related updates |
 
 # About this Manual
 
@@ -211,7 +209,7 @@ This document extends and generalizes that work in the following areas:
 | Static routes | Not covered | Unified via frrcfgd relay; StaticRouteBFD eliminated (§3.6) |
 | Convergence acceleration | Not covered | NeighOrch direct observer for single-hop (§3.5) |
 | Multi-owner sessions | Not covered | Plain reference counting at BFDOrch prevents silent deletion on key collision (§3.7) |
-| Mass flap handling | Not covered | Event coalescing (50ms window) to reduce per-event overhead on mass DOWN events (§3.8) |
+| Mass flap handling   | Not covered | Handled via NeighOrch hardware fast path (§3.5); no additional bfd-syncd coalescing logic |
 | BFD Sustenance Mode | Not covered | BFD Partial mode support (§3.9) |
 
 
@@ -964,62 +962,7 @@ unordered_map<string, int> m_sessionRefCount;
 
 This is the minimum change required to prevent the silent deletion problem described in §3.7.1. It requires ~10 lines of code in BFDOrch and no APPL_DB schema changes. Per-owner timer conflict resolution (minimum timer policy) and owner identity tracking are deferred to a future HLD if operational need arises.
 
-## 3.8 Mass Flap Event Coalescing
-
-### 3.8.1 Problem: Spine Failure in Large Clos Fabrics
-
-In a large Clos fabric, a single spine failure can cause hundreds to thousands of BFD sessions to transition DOWN simultaneously. This produces a cascade:
-
-```mermaid
-flowchart TD
-    A["ASIC: 500 BFD sessions DOWN\n(spine failure)"] --> B["BFDOrch\n500 STATE_DB updates"]
-    B --> C["bfd-syncd\n500 keyspace notifications\n(serial processing)"]
-    C --> D["bfdd\n500 BFD_STATE_CHANGE messages"]
-    D --> E["Zebra\n500 peer state updates (ZAPI)"]
-    E --> F["BGPd\n500 neighbor teardowns\n+ route withdrawals"]
-    F --> G["fpmsyncd → APPL_DB\n→ RouteOrch → SAI\nmass RIB updates"]
-
-    style A fill:#ffcdd2,stroke:#c62828
-    style B fill:#ffccbc,stroke:#bf360c
-    style C fill:#ffe0b2,stroke:#e65100
-    style D fill:#fff9c4,stroke:#f9a825
-    style E fill:#dcedc8,stroke:#558b2f
-    style F fill:#b3e5fc,stroke:#0277bd
-    style G fill:#e1bee7,stroke:#7b1fa2
-```
-
-Without coalescing, this burst saturates bfd-syncd's event loop, the Unix socket buffer to bfdd, and BGP's convergence path. The serial processing delay means the last session's DOWN notification may arrive seconds after the first — during which time traffic is black-holed on stale paths.
-
-### 3.8.2 Event Coalescing
-
-**Coalescing window (default: enabled, 50ms window):**
-
-When bfd-syncd receives a STATE_DB notification, it starts a coalescing timer. All notifications received within the window are batched into a single processing pass:
-
-```mermaid
-sequenceDiagram
-    participant S as STATE_DB
-    participant B as bfd-syncd
-    participant F as bfdd
-
-    S->>B: t=0ms: BFD DOWN session 1
-    Note over B: Start coalescing timer (50ms)
-    S->>B: t=5ms: BFD DOWN session 2
-    Note over B: Add to batch
-    S->>B: t=10ms: BFD DOWN session 3
-    Note over B: Add to batch
-    Note over B: ...more events batched...
-    Note over B: t=50ms: Timer fires
-    B->>F: Send N BFD_STATE_CHANGE messages<br/>in rapid succession
-```
-
-This reduces the overhead of per-event processing (Redis reads, socket writes) by amortizing it across the batch. The coalescing window adds at most 50ms of latency to the first event on the FRR reconvergence path. This does not affect traffic protection — the NeighOrch fast path (§3.5) operates independently of bfd-syncd and updates hardware ECMP groups immediately. The 50ms delay applies only to RIB convergence (alternate route installation), where baseline latency is already 100ms+ due to container crossings and FRR stack traversal.
-
-### 3.8.3 Interaction with NeighOrch Convergence Acceleration
-
-The NeighOrch fast path (§3.5) operates independently of bfd-syncd's coalescing. BFDOrch notifies NeighOrch directly via in-process observer callback — this path is not affected by bfd-syncd's coalescing window. Hardware ECMP groups are updated immediately regardless of coalescing state.
-
-Coalescing only affects the FRR reconvergence path (bfd-syncd → bfdd → Zebra → routing daemons). For single-hop sessions, the NeighOrch fast path provides immediate traffic protection.
+**Operator note (timer consistency):** Because BFDOrch stores only one set of timers per `BFD_SESSION_TABLE` key and uses last‑write‑wins semantics when multiple writers configure the same session, all consumers of a shared BFD session (e.g., BGP, staticd, VnetOrch) should be configured with consistent BFD timer values for that peer. Conflicting per‑owner timer settings are not rejected and may result in one application unintentionally overriding another’s timers.
 
 ## 3.9 Partial BFD Offload
 
@@ -1035,7 +978,7 @@ The BFD-Syncd design (§3.1–§3.3) assumes hardware handles the full BFD sessi
 
 ### 3.9.2 Hybrid Mode in bfdd
 
-A new bfdd mode (`--dplane-after-up`) where bfdd performs the software BFD handshake first, learns the remote discriminator and negotiated timers, then offloads the established session to hardware via the existing Distributed BFD protocol.
+A new bfdd mode (`--dplane-after-up`) where bfdd performs the software BFD handshake first, learns the remote discriminator and negotiated timers, then offloads the established session to hardware via the existing Distributed BFD protocol. In SONiC this mode is implemented as a small, SONiC‑local patch carried in the `sonic-frr` package; upstreaming to the FRR project is a best‑effort, non‑blocking follow‑up.
 
 ### 3.9.3 Session Lifecycle
 
@@ -1212,7 +1155,7 @@ Partial offload for IPv6 link-local sessions follows the same flow, with the add
 
 1. **SAI support:** Does `sai_create_bfd_session` with non-zero `SAI_BFD_SESSION_ATTR_REMOTE_DISCRIMINATOR` work on the target ASIC? Does the ASIC start TX immediately or still require its own Init→Up transition?
 
-2. **FRR upstream appetite:** Would the FRR community accept `--dplane-after-up`? The Distributed BFD protocol was designed for full offload. Partial offload is a reasonable extension but may face pushback as added complexity.
+2. **FRR upstream appetite:** The `--dplane-after-up` mode is initially carried as a SONiC‑local patch in `sonic-frr`. Upstream acceptance by the FRR community is desirable but not required for SONiC to ship this feature; the main risk is additional maintenance of the local delta if the upstream design diverges.
 
 3. **Overlap duration bound:** What is the worst-case latency from APPL_DB write to first hardware BFD TX? If this exceeds the remote peer's detection timeout (e.g., 3 × 100ms = 300ms), the overlap window may not be sufficient, and bfdd may need to temporarily increase its software TX rate during handover.
 
@@ -1262,9 +1205,7 @@ Local discriminators are assigned by BFDOrch when creating hardware BFD sessions
 3. Maintains an in-memory mapping between FRR's session LID and the hardware discriminator
 4. Rebuilds this mapping from STATE_DB at every startup — no external state persistence required
 
-**SWSS container restart — discriminator remapping (P2-8):** After a SWSS container restart, BFDOrch recreates hardware sessions from APPL_DB and may assign different local discriminators than before the restart. bfd-syncd detects this via STATE_DB keyspace notifications as entries reappear with new `local_discriminator` values. bfd-syncd treats a SWSS restart identically to its own startup: it performs a full discriminator mapping rebuild from STATE_DB. Any `BFD_STATE_CHANGE` messages sent to bfdd after the rebuild use the new discriminators. This is explicitly required — it is not an implicit consequence of the startup reconciliation path.
-
-**Transient state during SWSS restart:** Between SWSS going down and coming back up, STATE_DB entries may be temporarily deleted, generating DELETE keyspace notifications. bfd-syncd must not forward these transient deletions as BFD_STATE_CHANGE Down to bfdd, as this would trigger unnecessary routing reconvergence for sessions that will be recreated moments later. bfd-syncd suppresses state notifications for a configurable hold-down period (default: 5 seconds) after detecting a bulk STATE_DB deletion (defined as >50% of tracked sessions deleted within 1 second). During the hold-down, bfd-syncd queues STATE_DB events. When the hold-down expires, bfd-syncd performs a full STATE_DB re-read and reconciles: sessions that reappeared are updated silently, sessions that remain absent are reported as Down to bfdd.
+**SWSS container restart — discriminator remapping (P2-8):** After a SWSS container restart, BFDOrch recreates hardware sessions from APPL_DB and may assign different local discriminators than before the restart. bfd-syncd rebuilds its in‑memory LID↔key↔discriminator map by re‑reading `STATE_DB:BFD_SESSION_TABLE` and continues sending `BFD_STATE_CHANGE` notifications with the updated discriminators. SWSS restarts may cause transient BFD Down/Up events for affected sessions; this is acceptable because a SWSS restart already disrupts data‑plane programming.
 
 **Discriminator map observability (P4-4):** The current discriminator map is not directly queryable. For debugging, bfd-syncd logs the full LID↔key↔discriminator mapping at `LOG_DEBUG` level on startup and on every map entry change. Operators can inspect the mapping via `docker exec bgp grep "discriminator" /var/log/syslog`.
 
@@ -1561,7 +1502,7 @@ flowchart TD
 | bfd-syncd restart           | Sessions preserved in HW; LID↔key map rebuilt from STATE_DB; state reconciled — no session flap |
 | bfdd restart                | bfdd re-sends DP_ADD_SESSION for all peers; bfd-syncd matches each against STATE_DB. Sessions already in STATE_DB: skip APPL_DB write, send BFD_STATE_CHANGE with current state. Sessions with APPL_DB write pending (not yet in STATE_DB): treated as new — APPL_DB SET is idempotent, BFDOrch handles duplicate SET gracefully |
 | BGP container restart       | HW sessions continue uninterrupted; FRR re-registers BFD peers; bfd-syncd reconciles on startup |
-| SWSS container restart      | BfdOrch recreates HW sessions from APPL_DB and may assign new local discriminators. bfd-syncd detects bulk STATE_DB deletions and enters hold-down mode (§4.3), suppressing transient BFD_STATE_CHANGE Down notifications. After hold-down, bfd-syncd performs a full STATE_DB re-read and discriminator mapping rebuild, then re-notifies bfdd with updated discriminators via BFD_STATE_CHANGE |
+| SWSS container restart      | BfdOrch recreates HW sessions from APPL_DB and may assign new local discriminators. bfd-syncd rebuilds its LID↔key map from STATE_DB and continues sending `BFD_STATE_CHANGE` notifications with the updated discriminators. BFD sessions may flap during the restart window; this is acceptable given that a SWSS restart already disrupts hardware forwarding. |
 
 **Note:** Full warm restart (hitless restart with zero session flap) depends on BFDOrch warm restart capability. bfd-syncd is stateless and always reconciles from STATE_DB on startup.
 
@@ -1580,10 +1521,9 @@ flowchart TD
 | Minimum timer                            | Hardware dependent (typically 3.3ms minimum)                                             |
 | Multi-hop BFD convergence acceleration   | Not supported via NeighOrch (§3.5.4); BGP PIC is the recommended solution               |
 | StaticRouteBFD elimination prerequisite  | StaticRouteBFD can be removed only after frrcfgd is extended to relay static routes to FRR staticd (§3.6.5) |
-| Mass BFD session flap                    | In large Clos fabrics, a spine failure can cause hundreds to thousands of simultaneous BFD DOWN events. bfd-syncd provides event coalescing (50ms window, §3.8) to reduce per-event processing overhead. Coalescing does not affect the NeighOrch hardware fast path (§3.8.3) |
+| Mass BFD session flap                    | In large Clos fabrics, a spine failure can cause hundreds to thousands of simultaneous BFD DOWN events. Traffic protection relies on the NeighOrch hardware fast path (§3.5) to quickly remove failed nexthops from ECMP groups; control‑plane reconvergence time is still bounded by FRR capacity. No additional bfd-syncd‑level coalescing is implemented. |
 | Link-local MAC change transient          | When the peer MAC changes (§3.4.4 UPDATING state), bfd-syncd deletes and recreates the APPL_DB entry. The window between DELETE and SET causes a brief hardware BFD session interruption. If the remote peer's detection timeout is shorter than BFDOrch's processing latency for this window, a spurious BFD DOWN may propagate to the routing protocol. This is a known transient; the duration is bounded by BFDOrch processing latency |
 | NHFLAGS_IFDOWN clearing coordination     | NeighOrch sets NHFLAGS_IFDOWN from both interface-down and BFD DOWN events. Both conditions must be clear before the nexthop is re-enabled in hardware ECMP (§3.5.2). If this coordination is not implemented correctly, a nexthop may be re-enabled while one liveness condition is still unconfirmed |
-| SWSS restart transient suppression       | bfd-syncd suppresses BFD_STATE_CHANGE notifications during a detected SWSS restart (bulk STATE_DB deletion). The hold-down period (default 5s) delays genuine failure detection if a real peer failure coincides with a SWSS restart. This trade-off is acceptable — a SWSS restart already disrupts hardware forwarding |
 | Admin_Down not signaled to remote peers  | The Distributed BFD protocol lacks a message to transition hardware sessions to Admin_Down before deletion. When an operator shuts down a BFD peer or during planned events, the remote peer sees a timeout (Down) rather than Admin_Down and cannot enter GR helper mode (§3.3.3). Future protocol extension needed |
 
 # 9 Implementation
@@ -1714,13 +1654,7 @@ A PTF/pytest test plan covering all scenarios in §10.1–§10.5 is required for
 - Verify counter fields (tx_count, rx_count, up_count, down_count, last_state_change) are populated in STATE_DB and returned correctly in BFD_SESSION_COUNTERS
 - Verify bfd-syncd LOG_ERR is emitted when session limit is reached (searchable in syslog)
 
-## 10.9 Event Coalescing Tests
-
-- Verify coalescing window: inject 10 BFD DOWN events within 20ms; verify bfd-syncd processes them in a single batch after the 50ms window expires (not 10 individual events)
-- Verify coalescing latency: single BFD DOWN event is delivered to bfdd within 50ms (coalescing window upper bound)
-- Verify NeighOrch independence: during coalescing window, BFDOrch→NeighOrch fast path still operates — hardware ECMP updates are not delayed by coalescing
-
-## 10.10 Partial BFD Offload Tests
+## 10.9 Partial BFD Offload Tests
 
 - Verify software handshake completes: bfdd in `--dplane-after-up` mode performs 3-way BFD handshake via CPU before sending DP_ADD_SESSION to bfd-syncd
 - Verify DP_ADD_SESSION includes negotiated parameters: `remote_discriminator`, `negotiated_tx_interval`, `negotiated_rx_interval` are non-zero when partial offload is enabled
