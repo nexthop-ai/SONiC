@@ -32,15 +32,15 @@ This design is a built-in SONiC feature that extends the existing `sonic-utiliti
 
 ### 3. Definitions/Abbreviations
 
-| Term    | Meaning                                           |
-|---------|---------------------------------------------------|
-| SFP     | Small Form-factor Pluggable transceiver          |
-| QSFP    | Quad Small Form-factor Pluggable transceiver     |
-| CMIS    | Common Management Interface Specification         |
+| Term    | Meaning                                            |
+|---------|----------------------------------------------------|
+| SFP     | Small Form-factor Pluggable transceiver            |
+| QSFP    | Quad Small Form-factor Pluggable transceiver       |
+| CMIS    | Common Management Interface Specification          |
 | CDB     | Command Data Block (CMIS firmware update mechanism)|
-| PN      | Part Number                                       |
-| HLD     | High-Level Design                                 |
-| CLI     | Command Line Interface                            |
+| PN      | Part Number                                        |
+| HLD     | High-Level Design                                  |
+| CLI     | Command Line Interface                             |
 
 ### 4. Overview
 
@@ -86,7 +86,7 @@ The feature is a built-in SONiC enhancement that modifies the `sonic-utilities` 
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     sfputil CLI                              │
+│                     sfputil CLI                             │
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │  show fwversion [--interfaces] [--vendor-pn]           │ │
 │  │  firmware upgrade [--interfaces] [--vendor-pn]         │ │
@@ -95,7 +95,7 @@ The feature is a built-in SONiC enhancement that modifies the `sonic-utilities` 
                             │
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
-│              Filtering & Selection Logic                     │
+│              Filtering & Selection Logic                    │
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │  - Parse interface lists                               │ │
 │  │  - Match vendor part numbers                           │ │
@@ -105,7 +105,7 @@ The feature is a built-in SONiC enhancement that modifies the `sonic-utilities` 
                             │
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
-│           Firmware Upgrade Logic                             │
+│           Firmware Upgrade Logic                            │
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │  ThreadPoolExecutor ()                                 │ │
 │  │  - Concurrent firmware downloads                       │ │
@@ -116,7 +116,7 @@ The feature is a built-in SONiC enhancement that modifies the `sonic-utilities` 
                             │
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
-│              Platform API Layer                              │
+│              Platform API Layer                             │
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │  - get_transceiver_info()                              │ │
 │  │  - get_module_fw_info()                                │ │
