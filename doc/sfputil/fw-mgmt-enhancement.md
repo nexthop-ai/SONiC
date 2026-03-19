@@ -20,9 +20,9 @@
 
 ### 1. Revision
 
-| Rev | Date       | Author       | Change Description |
-|-----|------------|--------------|-------------------|
-| 0.1 | 2026-03-18 | SONiC Team   | Initial version   |
+| Rev | Date       | Author        | Change Description |
+|-----|------------|---------------|--------------------|
+| 0.1 | 2026-03-18 | Rohit Sharma  | Initial version    |
 
 ### 2. Scope
 
