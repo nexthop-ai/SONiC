@@ -42,7 +42,18 @@ This HLD does not redefine the composite SFP or `optical_devices.json` models th
 
 ### 3. Definitions/Abbreviations 
 
-This section covers the abbreviation if any, used in this high-level design document and its definitions.
+| Term           | Definition |
+|----------------|------------|
+| CPO            | Co-packaged Optics; hardware where a single logical interface is driven by multiple I2C-configurable devices (for example, an optical engine and an external laser source). |
+| Composite SFP  | A logical SFP/transceiver object that internally aggregates multiple SFP-like devices (for example, OE and ELSFP) but is presented to higher layers as a single port. |
+| SFP            | Small Form-factor Pluggable transceiver; in this document used generically to refer to pluggable optical modules managed by `sfputil`. |
+| OE             | Optical Engine; a CPO device. |
+| ELSFP          | External Laser Small Form-factor Pluggable; a CPO device that provides laser sources powering one or more optical engines. |
+| EEPROM         | Electrically Erasable Programmable Read-Only Memory used by transceivers to store identification, configuration, and diagnostic information. |
+| I2C            | Inter-Integrated Circuit; the serial bus used to access transceiver EEPROMs and control registers. |
+| MCU            | Microcontroller Unit; in this context, a device that may proxy or aggregate EEPROM and control-plane access for multiple underlying CPO devices (joint mode). |
+| DUT            | Device Under Test; a SONiC switch or system on which `sfputil` is executed. |
+| `sfputil`      | SONiC command-line utility for managing SFP and transceiver devices (EEPROM access, power, low-power mode, reset, and related debug/show commands). |
 
 ### 4. Overview 
 
