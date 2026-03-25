@@ -2,6 +2,26 @@
 
 ## Table of Content 
 
+- [1. Revision](#1-revision)
+- [2. Scope](#2-scope)
+- [3. Definitions/Abbreviations](#3-definitionsabbreviations)
+- [4. Overview](#4-overview)
+- [5. Requirements](#5-requirements)
+- [6. Architecture Design](#6-architecture-design)
+- [7. High-Level Design](#7-high-level-design)
+- [8. SAI API](#8-sai-api)
+- [9. Configuration and management](#9-configuration-and-management)
+  - [9.1 Manifest (if the feature is an Application Extension)](#91-manifest-if-the-feature-is-an-application-extension)
+  - [9.2 CLI/YANG model Enhancements](#92-cliyang-model-enhancements)
+  - [9.3 Config DB Enhancements](#93-config-db-enhancements)
+- [10. Warmboot and Fastboot Design Impact](#10-warmboot-and-fastboot-design-impact)
+- [11. Memory Consumption](#11-memory-consumption)
+- [12. Restrictions/Limitations](#12-restrictionslimitations)
+- [13. Testing Requirements/Design](#13-testing-requirementsdesign)
+  - [13.1 Unit Test cases](#131-unit-test-cases)
+  - [13.2 System Test cases](#132-system-test-cases)
+- [14. Open/Action items - if any](#14-openaction-items---if-any)
+
 ### 1. Revision  
 
 ### 2. Scope  
@@ -47,7 +67,58 @@ These changes are intentionally scoped to `sfputil` and its interaction with exi
 
 ### 5. Requirements
 
-This section list out all the requirements for the HLD coverage and exemptions (not supported) if any for this design.
+The requirements in this section describe what behavior `sfputil` must provide once composite SFPs and CPO hardware are present, and how that behavior must interact with existing, non-composite platforms.
+
+#### 5.1 Functional requirements
+
+- **CPO support for all existing `sfputil` commands**  
+  `sfputil` **shall** support operating on CPO-backed (composite) ports for all currently supported top-level commands, unless explicitly called out as unsupported in this HLD or the CPO notes document. This includes:
+  - `sfputil debug ...`
+  - `sfputil firmware ...`
+  - `sfputil lpmode on` / `sfputil lpmode off`
+  - `sfputil power enable` / `sfputil power disable`
+  - `sfputil read-eeprom`
+  - `sfputil reset`
+  - `sfputil show ...`
+  - `sfputil version`
+  - `sfputil write-eeprom`
+
+- **New command to enumerate devices per port**  
+  A new command **shall** be added to list all detected internal devices associated with a logical port, including at minimum the device name, type (for example, optical engine vs. external laser source). This command is the primary discovery mechanism for understanding how a CPO-backed port is composed.
+
+- **Device selection for composite ports**  
+  For composite SFPs, commands that act on an EEPROM or device-specific control bits **shall** accept an optional device selector argument (for example, `-d/--device <device-name>`), allowing operators to target a specific internal device. For non-composite ports this argument must remain optional and, if omitted, the command must behave as it does today.
+
+- **Behavior when the device selector is omitted**  
+  For composite ports, the behavior when the device selector is omitted **shall** be well-defined on a per-command basis:
+  - For operations where a single unambiguous target does not exist (for example, `read-eeprom` on a composite SFP without an MCU that aliases the memory map), the command **shall** fail with a clear error instructing the user to specify a device.
+  - For operations that are naturally broadcast or symmetric across internal devices (for example, powering both devices on/off when supported by the platform), the design **may** define a default behavior that applies the operation to all applicable internal devices when the device selector is omitted.
+
+- **Support for both joint and separate CPO modes**  
+  The design **shall** support platforms where CPO hardware is:
+  - managed via separate devices (independent EEPROMs and control bits for OE and ELS), and
+  - managed via a joint-mode MCU that exposes a unified EEPROM view and internal memory mapping.  
+  In both cases, the same `sfputil` CLI and device-selector semantics must apply; platform differences are handled behind the platform API and composite SFP abstraction.
+
+- **Interaction with composite SFP platform APIs**  
+  `sfputil` **shall** use the composite SFP interfaces defined in the CPO port-mapping HLD (for example, `get_internal_devices()` / `get_internal_device()`) to discover and operate on the internal devices backing a logical port. Direct EEPROM access to composite SFP wrapper objects (which do not implement `read_eeprom` / `write_eeprom`) must not be required.
+
+- **Techsupport and diagnostics**  
+  For composite ports, the existing techsupport flows that rely on `sfputil` (for example, EEPROM hexdumps) **shall** be extended so that they can collect per-device data (OE and ELS) where supported, without regressing existing behavior for non-composite ports.
+
+#### 5.2 Backward compatibility and error handling
+
+- Existing `sfputil` commands and options **shall** continue to work unchanged on platforms that do not use composite SFPs or CPO hardware.
+- When a user attempts to use CPO- or device-specific options on a non-composite port, `sfputil` **shall** return a error indicating that the option is not applicable to that port.
+- When a command on a composite port cannot determine a unique or valid target device (for example, missing or invalid `--device`), `sfputil` **shall**:
+  - fail the command, and
+  - emit an error message that explains what additional information is required (for example, "EthernetX is a composite SFP; please specify a device using `-d`" or similar wording to be detailed later in this document).
+
+#### 5.3 Non-functional requirements
+
+- The changes in this HLD **shall not** require any changes to SAI APIs, the composite SFP abstraction, or the `optical_devices.json` schema; they must build solely on the abstractions provided by the CPO port-mapping HLD and the platform API.
+- The additions **shall not** introduce significant performance regressions for `sfputil` operations on either composite or non-composite platforms (for example, no additional blocking I/O or expensive lookups in the hot path beyond what is necessary to resolve and enumerate internal devices).
+- Warmboot and fastboot behavior **shall not** be impacted by these changes; any initialization needed for composite SFP awareness must be compatible with existing boot constraints.
 
 ### 6. Architecture Design 
 
