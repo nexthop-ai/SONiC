@@ -12,6 +12,7 @@ Rev 1.3
 
 \[High Level Design Document\]
 
+<<<<<<< HEAD
 [Rev 1.0](#heading=h.snl1xsdxyqtx)
 
 [Table of Contents](#table-of-contents)
@@ -51,6 +52,47 @@ Rev 1.3
 [2.1.4 CLI Changes](#2.1.4-cli-changes)
 
 [2.1.5 Config Generation Changes](#2.1.5-config-generation-changes)
+=======
+[Rev 1.0]
+
+[Table of Contents]
+
+[Revision]
+
+[About this Manual]
+
+[Scope]
+
+[1 Requirements Overview]
+
+[1.1 Functional Requirements]
+
+[1.2 Configuration requirements]
+
+[1.3 Agent requirements]
+
+[1.3.1 Orchagent]
+
+[1.3.2 Bgpconfd]
+
+[1.3.3 Sonic-utilities]
+
+[1.3.4 Sonic-host-services Caclmgrd]
+
+[2 Modules Design]
+
+[2.1 Switch Type “VOQ” For Both Chassis and Single-ASIC cases]
+
+[2.1.1 Orchagent Changes]
+
+[2.1.2 Bgpconfd Changes]
+
+[2.1.3 Sonic-utilities, Sonic-host-services/Caclmgrd Changes]
+
+[2.1.4 CLI Changes]
+
+[2.1.5 Config Generation Changes]
+>>>>>>> upstream/master
 
 # 
 
@@ -85,7 +127,11 @@ iBGP configuration that was generated for chassis-based VOQ systems is not neede
 
 Compared to a chassis system that required all system ports to be configured across all linecards Sonic instances, the single-asic-voq system only needs a system port to be configured for each local port.
 
+<<<<<<< HEAD
 We do not need to create the inband port or the recirculation port in single-asic-voq systems. We will continue to need fabric ports so that fabric port statistics can be exposed.
+=======
+We do not need to create the inband port in single-asic-voq systems. We will continue to need fabric ports so that fabric port statistics can be exposed.
+>>>>>>> upstream/master
 
 ## **1.4 Agent requirements**
 
@@ -98,8 +144,12 @@ We do not need to create the inband port or the recirculation port in single-asi
 
   ### **1.4.2 Bgpconfd**
 
+<<<<<<< HEAD
 - Spawn off ChassisDbMgr only on Chassis VOQ system but not on single-ASIC VOQ
 
+=======
+- Spawn off ChassisDbMgr only on Chassis VOQ system but not on single-ASIC VOQ  
+>>>>>>> upstream/master
 
   ### **1.4.3 Sonic-utilities**
 
@@ -129,7 +179,11 @@ API *is\_voq\_chassis* will check for the presence of the *chassisdb.conf* file.
 
 - Orchagent will handle VOQ functionality the same way i.e. creation of system ports. But connect to Chassis DB only if chassis DB is supported in the sonic system.  
     
+<<<<<<< HEAD
 - Given the inband and recirculation ports are not created, we need to make sure mirrororch, neighorch, etc are updated to not look for these ports in single-asic-voq mode.
+=======
+- Given the inband ports are not created, we need to make sure orchagent is updated to not look for these ports in single-asic-voq mode.
+>>>>>>> upstream/master
 
 ### **2.1.2 Bgpconfd Changes**
 
@@ -145,4 +199,8 @@ API *is\_voq\_chassis* will check for the presence of the *chassisdb.conf* file.
 
 ### **2.1.5 Config Generation Changes**
 
+<<<<<<< HEAD
 We do not generate config for chassis if the system is not a chassis system. eg. internal iBGP peering config is not needed in single-ASIC VOQ.
+=======
+We do not generate config for chassis if the system is not a chassis system. eg. internal iBGP peering config is not needed in single-ASIC VOQ.
+>>>>>>> upstream/master

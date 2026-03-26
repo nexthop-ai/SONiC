@@ -80,6 +80,10 @@
 | 0.7 | 01/05/2023  |  Fuzail Khan, Precy Lee     | FPGAPCIe component support        |
 | 0.8 | 03/17/2023  |  Fuzail Khan, Precy Lee     | S3IP SysFS support        |
 | 0.9 | 05/31/2025  |  Nexthop AI                 | Multi-FPGAPCIe component support  |
+<<<<<<< HEAD
+=======
+| 1.0 | 10/26/2025  |  Nexthop AI                 | Multi-FPGAPCIe Multi-Protocol support |
+>>>>>>> upstream/master
 
 # About this Manual
 Platform Driver Development Framework (PDDF) is part of SONiC Platform Development Kit (PDK), which enables rapid development of platform drivers and APIs for SONiC platforms. PDK consists of
@@ -740,7 +744,7 @@ fan<idx>_fault
 where idx represents the Fan index [1..32]
 ```
 
-Since PDDF has been changed to support platform 2.0 APIs, general design considers all the FANs inside a fantray as seperate FANs. If a fantray consist of two fans, front and rear, JSON object for FAN not only provides the access details for the front fan but also for the rear fan.
+Since PDDF has been changed to support platform 2.0 APIs, general design considers all the FANs inside a fantray as separate FANs. If a fantray consist of two fans, front and rear, JSON object for FAN not only provides the access details for the front fan but also for the rear fan.
 
 ##### 3.4.4.2 FAN JSON Design
 FAN JSON is structured to include the access-data for all the supported SysFS attributes.
@@ -1123,7 +1127,7 @@ The SysFS paths should be given as per the PDDF I2C topology description and the
 FPGA can be programmed as a I2C master controller. Some platforms use a FPGAPCIe card to control I2C devices and  the communication with the CPU is by PCIe interface. PDDF supports a FPGAPCIe card by providing the following modules:
 
 * FPGAPCIe Data Module:
-    - Mange access data defined in JSON via SysFS interface
+    - Manage access data defined in JSON via SysFS interface
     - Populate data and trigger FPGAPCIe instantiation
 * FPGAPCIe Driver Module:
     - PCIe device instantiation
@@ -1137,7 +1141,7 @@ connected FPGA, vendors need to provide the FPGA driver.
 
 ##### 3.4.12.1 FPGAPCIe JSON Design
 
-FPGAPCIe JSON object follows PDDF I2C topology JSON object design concept. FPGAPCIE object is under i2c keyword becuase it is programmed as I2c buses to control I2C client devices.
+FPGAPCIe JSON object follows PDDF I2C topology JSON object design concept. FPGAPCIE object is under i2c keyword because it is programmed as I2c buses to control I2C client devices.
 
 
 ```
@@ -1204,7 +1208,11 @@ Description of the fields inside *dev_attr*
 
 #### 3.4.13 Multi-FPGAPCIe Component
 
+<<<<<<< HEAD
 This can be a drop in replacement for [FPGAPCIe Component](#3412-pfgapcie-component). Multi-FPGAPCIe supports systems containing one or more PCIe FPGAs, where as [FPGAPCIe Component](#3412-pfgapcie-component) supported systems with a single PCIe FPGA only. With Multi-FPGAPCIe, each FPGA can be uniquely identified by its `BDF` in `Domain:Bus:Device.Function` format. For components (e.g LED, PSU, XCVR) managed by the Multi-FPGAPCIe system, `attr_devtype` must be set to `multifpgapci`, and `attr_bdf` must be set to the `BDF` of the associated FPGA.
+=======
+This can be a drop in replacement for [FPGAPCIe Component](#3412-pfgapcie-component). Multi-FPGAPCIe supports systems containing one or more PCIe FPGAs, where as [FPGAPCIe Component](#3412-pfgapcie-component) supported systems with a single PCIe FPGA only. With Multi-FPGAPCIe, each FPGA can be uniquely identified by its `BDF` in `Domain:Bus:Device.Function` format. For components (e.g LED, PSU, XCVR) managed by the Multi-FPGAPCIe system, `attr_devtype` must be set to `multifpgapci`, and `attr_devname` must match the `device_name` of the associated FPGA.
+>>>>>>> upstream/master
 
 Multi-FPGAPCIe support the following PDDF components:
  - CPLDMUX
@@ -1216,7 +1224,11 @@ Multi-FPGAPCIe support the following PDDF components:
 Multi-FPGAPCIe supports the following IP blocks:
  - I2C (Assumes Xilinx I2C, like [FPGAPCIe Component](#3412-pfgapcie-component))
  - GPIO (TODO)
+<<<<<<< HEAD
  - SPI (Assumes Xilinx SPI)
+=======
+ - SPI (TODO)
+>>>>>>> upstream/master
 
 ##### 3.4.13.1 Multi-FPGAPCIe Sysfs Design
 
@@ -1340,6 +1352,7 @@ echo 1 > /sys/kernel/pddf/devices/multifpgapci/0000:04:00.0/i2c/new_i2c_adapter
 echo 0 > /sys/kernel/pddf/devices/multifpgapci/0000:04:00.0/i2c/del_i2c_adapter
 ```
 
+<<<<<<< HEAD
 #### 3.4.13.1.3 SPI Controller and Device Support
 
 PDDF provides support for SPI (Serial Peripheral Interface) controllers and SPI devices. This enables platforms to manage SPI-based peripherals such as FPGA configuration flash memories, boot flash devices, and other SPI-connected components through a standardized framework.
@@ -1627,6 +1640,8 @@ echo 'GE_FPGA_FLASH CPUCARD_SPI_CONTROLLER spi-nor 26000000 0' > /sys/kernel/pdd
 echo 'GE_FPGA_FLASH' > /sys/kernel/pddf/devices/spi/delete_spi_device
 ```
 
+=======
+>>>>>>> upstream/master
 ##### 3.4.13.2 Multi-FPGAPCIe System JSON Design
 
 To inform the `multifpgapci` driver about the PCI Vendor ID and Device ID tuples it should look for on the PCIe bus.
@@ -1641,7 +1656,11 @@ See [3.4.13.1.1 Base FPGA Module Sysfs Controls](#341311-base-fpga-module-sysfs-
     "device_name": "MULTIFPGAPCIESYSTEM0",
     "device_parent": null
   },
+<<<<<<< HEAD
   "i2c": {
+=======
+  "dev_attr": {
+>>>>>>> upstream/master
     "PCI_DEVICE_IDS": [
       {
         "vendor": "0x10ee",
@@ -1658,6 +1677,7 @@ See [3.4.13.1.1 Base FPGA Module Sysfs Controls](#341311-base-fpga-module-sysfs-
 
 Description of the fields inside *dev_info*
 
+<<<<<<< HEAD
 > **device_type**: Must be set to `MULTIFPGAPCIESYSTEM`
 
 > **device_name**: Must be set to `MULTIFPGAPCIESYSTEM0`
@@ -1669,6 +1689,19 @@ Description of the fields within elements inside *PCI_VENDOR_IDS*
 > **vendor**: 16 bit hexadecimal which matches the FPGA's PCIe Vendor ID
 
 > **device**: 16 bit hexadecimal which matches the FPGA's PCIe Device ID
+=======
+> **device_type**: Must be set to `MULTIFPGAPCIESYSTEM`.
+
+> **device_name**: Must be set to `MULTIFPGAPCIESYSTEM0`.
+
+> **device_parent**: Must be set to `null`.
+
+Description of the fields within elements inside *PCI_VENDOR_IDS*
+
+> **vendor**: 16 bit hexadecimal which matches the FPGA's PCIe Vendor ID.
+
+> **device**: 16 bit hexadecimal which matches the FPGA's PCIe Device ID.
+>>>>>>> upstream/master
 
 ##### 3.4.12.3 Multi-FPGAPCIe (per FPGA) JSON Design
 
@@ -1677,16 +1710,26 @@ Each FPGA must have their PCIe Device ID and Vendor ID matching those specified 
 See [3.4.13.1.2 I2C Module Sysfs Controls (Per-FPGA)](#341312-i2c-module-sysfs-controls-per-fpga) for the corresponding sysfs backend.
 
 ```
+<<<<<<< HEAD
 "MULTIFPGAPCIE0": {
   "dev_info": {
     "device_type": "MULTIFPGAPCIE",
     "device_name": "CPU_FPGA",
     "device_parent": "PCIE0",
     "device_bdf": "0000:03:00.0",
+=======
+"MULTIFPGAPCIE1": {
+  "dev_info": {
+    "device_type": "MULTIFPGAPCIE",
+    "device_name": "SWITCHCARD_FPGA",
+    "device_parent": "PCIE0",
+    "device_bdf": "0000:04:00.0",
+>>>>>>> upstream/master
     "dev_attr": {}
   },
   "i2c": {
     "dev_attr": {
+<<<<<<< HEAD
       "virt_bus": "0x4",
       "ch_base_offset": "0x40000",
       "ch_size": "0x200",
@@ -1708,13 +1751,33 @@ See [3.4.13.1.2 I2C Module Sysfs Controls (Per-FPGA)](#341312-i2c-module-sysfs-c
     ]
   }
 },
+=======
+      "virt_bus": "0x13",
+      "ch_base_offset": "0x40000",
+      "ch_size": "0x200",
+      "num_virt_ch": "0x44"
+    },
+    "channel": [
+      { "chn": "0", "dev": "FAN-CTRL" },
+      { "chn": "0", "dev": "CPLDMUX0" },
+      { "chn": "1", "dev": "CPLDMUX1" },
+      { "chn": "3", "dev": "CPLDMUX2" },
+      { "chn": "4", "dev": "PORT1" },
+      ...
+>>>>>>> upstream/master
 ```
 
 Description of fields unique to Multi-FPGAPCIe, see [FPGAPCIe JSON Design](#34121-fpgapcie-json-design) for description of i2c related fields.
 
+<<<<<<< HEAD
 > **device_type**: Must be set to `MULTIFPGAPCIE`
 
 > **device_name**: Must be set to `MULTIFPGAPCIESYSTEM0`
+=======
+> **device_type**: Must be set to `MULTIFPGAPCIE`.
+
+> **device_name**: Each FPGA must have a unique `device_name`.
+>>>>>>> upstream/master
 
 > **device_bdf**: The FPGA's address in BDF (Domain:Bus:Device.Function) format.
 
@@ -1738,7 +1801,11 @@ Description of fields unique to Multi-FPGAPCIe, see [FPGAPCIe JSON Design](#3412
     "dev_attr": {
       "base_chan": "0x57",
       "num_chan": "4",
+<<<<<<< HEAD
       "bdf": "0000:04:00.0"
+=======
+      "cpld_name": "SWITCHCARD_FPGA"
+>>>>>>> upstream/master
     },
     "channel": [
       {
@@ -1752,9 +1819,15 @@ Description of fields unique to Multi-FPGAPCIe, see [FPGAPCIe JSON Design](#3412
       ...
 ```
 
+<<<<<<< HEAD
 > **dev_type**: Must be set to `multifpgapci_mux`
 
 > **bdf**: The FPGA's address in BDF (Domain:Bus:Device.Function) format.
+=======
+> **dev_type**: Must be set to `multifpgapci_mux`.
+
+> **cpld_name**:  Must match the `device_name` of the FPGA which controls the mux channel selection.
+>>>>>>> upstream/master
 
 ###### Multi-FPGAPCIe LED JSON
 
@@ -1772,8 +1845,12 @@ Description of fields unique to Multi-FPGAPCIe, see [FPGAPCIe JSON Design](#3412
       {
         "attr_name": "yellow",
         "attr_devtype": "multifpgapci",
+<<<<<<< HEAD
         "attr_devname": "MULTIFPGAPCIE1",
         "attr_bdf": "0000:04:00.0",
+=======
+        "attr_devname": "SWITCHCARD_FPGA",
+>>>>>>> upstream/master
         "bits": "3:0",
         "descr": "yellow",
         "value": "0x1",
@@ -1783,9 +1860,15 @@ Description of fields unique to Multi-FPGAPCIe, see [FPGAPCIe JSON Design](#3412
       ...
 ```
 
+<<<<<<< HEAD
 > **attr_devtype**: Must be set to `multifpgapci`
 
 > **attr_bdf**: The FPGA's address in BDF (Domain:Bus:Device.Function) format.
+=======
+> **attr_devtype**: Must be set to `multifpgapci`.
+
+> **attr_devname**: Must match the `device_name` of the FPGA which controls the LED's color.
+>>>>>>> upstream/master
 
 ###### Multi-FPGAPCIe XCVR JSON
 
@@ -1808,8 +1891,12 @@ Description of fields unique to Multi-FPGAPCIe, see [FPGAPCIe JSON Design](#3412
         "attr_name": "xcvr_reset",
         "attr_devaddr": "0x0",
         "attr_devtype": "multifpgapci",
+<<<<<<< HEAD
         "attr_devname": "MULTIFPGAPCIE1",
         "attr_bdf": "0000:04:00.0",
+=======
+        "attr_devname": "SWITCHCARD_FPGA",
+>>>>>>> upstream/master
         "attr_offset": "0x34",
         "attr_mask": "0x0",
         "attr_cmpval": "0x0",
@@ -1818,9 +1905,15 @@ Description of fields unique to Multi-FPGAPCIe, see [FPGAPCIe JSON Design](#3412
       ...
 ```
 
+<<<<<<< HEAD
 > **attr_devtype**: Must be set to `multifpgapci`
 
 > **attr_bdf**: The FPGA's address in BDF (Domain:Bus:Device.Function) format.
+=======
+> **attr_devtype**: Must be set to `multifpgapci`.
+
+> **attr_devname**: Must match the `device_name` of the FPGA which controls the xcvr.
+>>>>>>> upstream/master
 
 ###### Multi-FPGAPCIe PSU JSON
 
@@ -1842,18 +1935,31 @@ Description of fields unique to Multi-FPGAPCIe, see [FPGAPCIe JSON Design](#3412
       {
         "attr_name": "psu_present",
         "attr_devtype": "multifpgapci",
+<<<<<<< HEAD
         "attr_devname": "MULTIFPGAPCIE1",
         "attr_bdf": "0000:04:00.0",
+=======
+        "attr_devname": "SWITCHCARD_FPGA",
+>>>>>>> upstream/master
         "attr_offset": "0x98",
         "attr_mask": "0x400",
         "attr_cmpval": "0x400",
         "attr_len": "1"
       },
+<<<<<<< HEAD
 ```
 
 > **attr_devtype**: Must be set to `multifpgapci`
 
 > **attr_bdf**: The FPGA's address in BDF (Domain:Bus:Device.Function) format.
+=======
+      ...
+```
+
+> **attr_devtype**: Must be set to `multifpgapci`.
+
+> **attr_devname**: Must match the `device_name` of the FPGA which reads the PSU's status.
+>>>>>>> upstream/master
 
 ###### Multi-FPGAPCIe PSU JSON
 
@@ -1878,20 +1984,32 @@ Description of fields unique to Multi-FPGAPCIe, see [FPGAPCIe JSON Design](#3412
         "attr_name": "fan1_present",
         "attr_devaddr": "0x0",
         "attr_devtype": "multifpgapci",
+<<<<<<< HEAD
         "attr_devname": "MULTIFPGAPCIE1",
         "attr_bdf": "0000:04:00.0",
+=======
+        "attr_devname": "SWITCHCARD_FPGA",
+>>>>>>> upstream/master
         "attr_offset": "0xa4",
         "attr_mask": "0x000000f0",
         "attr_cmpval": "0x00000070",
         "attr_len": "1"
       },
       ...
+<<<<<<< HEAD
 
 ```
 
 > **attr_devtype**: Must be set to `multifpgapci`
 
 > **attr_bdf**: The FPGA's address in BDF (Domain:Bus:Device.Function) format.
+=======
+```
+
+> **attr_devtype**: Must be set to `multifpgapci`.
+
+> **attr_devname**: Must match the `device_name` of the FPGA which controls the fan.
+>>>>>>> upstream/master
 
 #### 3.4.14 Multi-Protocol Support Design
 
@@ -2014,7 +2132,7 @@ If this field exists, the device name is displayed using this field. Otherwise, 
 ipmitool and ipmiapi are two methods of getting ipmi data. ipmitool uses ipmitool command to get data from BMC while ipmiapi will use kernel ipmi interfaces to retrieve the data. ipmiapi will be implemented in the future.
 
 > **attr_name**:
-The PDDF BMC JSON design has the pre-defined list of the attribute names which is platform independent. IPMI is an standardized interface specification, but the naming convention of ipmitool output is vendor specific. The pre-defined attribue name list provides the ability to use generic PDDF generic platform APIs to retrieve information for all platforms.
+The PDDF BMC JSON design has the pre-defined list of the attribute names which is platform independent. IPMI is an standardized interface specification, but the naming convention of ipmitool output is vendor specific. The pre-defined attribute name list provides the ability to use generic PDDF generic platform APIs to retrieve information for all platforms.
 
 > **bmc_cmd**:
 There are two types of cmds: raw ipmi request and non raw ipmi request. The list of available ipmitool commands can be found by
@@ -2255,7 +2373,7 @@ Example,
 
 
 #### 3.7.3 LED Class
-There is no generic LED API class defined in PDDF. LED APIs related to a component has been made part of thats component's platform API class. System LED APIs are made part of PddfChassis class.
+There is no generic LED API class defined in PDDF. LED APIs related to a component has been made part of that component's platform API class. System LED APIs are made part of PddfChassis class.
 ```
 class PddfChassis(ChassisBase):
     def set_system_led(self, device_name, color):
@@ -2532,7 +2650,7 @@ root@sonic:/home/admin#
 
 
 
-> NOTE: Above output differs from the ouput in PDDF v1.0. This is because of the fact that FAN numbering scheme changed due to introduction of 2.0 platform APIs. Rear fans are now considered separate fans. In above output,
+> NOTE: Above output differs from the output in PDDF v1.0. This is because of the fact that FAN numbering scheme changed due to introduction of 2.0 platform APIs. Rear fans are now considered separate fans. In above output,
 > Fantray1_1: Front fan of frantray1
 > Fantray1_2: Rear fan of fantray1
 
@@ -2719,19 +2837,19 @@ S3IP sysfs specification defines a unified interface to access peripheral hardwa
 
 - S3IP sysfs should be generated and could be removed on requirement
 - Though S3IP can be clubbed with PDDF, PDDF should be independent of the S3IP
-- If any attribute which cannot be read should have a value of 'NA' i.e. tools should not fail due to non existance of the attribute
+- If any attribute which cannot be read should have a value of 'NA' i.e. tools should not fail due to non existence of the attribute
 - S3IP sysfs should be able to work with the existing PDDF common driver sysfs
 - PDDF common driver attributes should be expanded, if required, to cover the left out attributes from S3IP specifications
 
 ### 7.2 Implementation Details
 
-The S3IP specifications and framework are defined [here](https://github.com/sonic-net/SONiC/pull/1068). Both vendors and users are required to follow the S3IP spec. The platform vendors need to provide the implementation of the set/get attribute functions for the platforms which use S3IP sysfs framework. The attributes for each component are defined in the specificaitons. This effort is to combine the S3IP spec and PDDF framework. In other words, the platform which are using PDDF would be S3IP compliant too after this support is added.
+The S3IP specifications and framework are defined [here](https://github.com/sonic-net/SONiC/pull/1068). Both vendors and users are required to follow the S3IP spec. The platform vendors need to provide the implementation of the set/get attribute functions for the platforms which use S3IP sysfs framework. The attributes for each component are defined in the specifications. This effort is to combine the S3IP spec and PDDF framework. In other words, the platform which are using PDDF would be S3IP compliant too after this support is added.
 
 #### 7.2.1 PDDF and S3IP SysFS
 
 PDDF implements common kernel drivers for various components. These common drivers exposes a fixed set of sysfs attributes as per the HW support and current SONiC API requirements. Complying to S3IP spec requires the mapping of S3IP component attributes to PDDF exposed sysfs attributes and might even require adding new attributes to PDDF common driver code. Hence, S3IP spec sysfs attributes are divided into the following categories.
 
- - Platform Info Attributes: This includes the fixed information pertaining to the platform in entirity or any component. There is no need of reading this information from the component in run time. Further, these values will not change in the course of System running the SONiC image. Below are few examples of static info attributes.
+ - Platform Info Attributes: This includes the fixed information pertaining to the platform in entirety or any component. There is no need of reading this information from the component in run time. Further, these values will not change in the course of System running the SONiC image. Below are few examples of static info attributes.
 
      - /sys_switch/temp_sensor/number, /sys_switch/vol_sensor/number, /sys_switch/curr_sensor/number etc.
 
@@ -2753,7 +2871,7 @@ PDDF implements common kernel drivers for various components. These common drive
      |-|-|-|-|
      |/sys_switch/fan/fan[n]/status |RO| enum| Fan states are defined as follows:<br>0: not present<br>1: present and normal<br>2: present and abnormal
 
-     - This is a combination of 'presence' and 'running_status' informations of a fan unit. In SONiC we can handle this in the platform APIs but S3IP compels to performs this processing inside the kernel modules. Hence if ODM extends the PDDF driver and provide the kernel implementation of such sysfs, we can create the mapping. Otherwise we will map it to 'NA'.
+     - This is a combination of 'presence' and 'running_status' information of a fan unit. In SONiC we can handle this in the platform APIs but S3IP compels to performs this processing inside the kernel modules. Hence if ODM extends the PDDF driver and provide the kernel implementation of such sysfs, we can create the mapping. Otherwise we will map it to 'NA'.
 
 #### 7.2.2 S3IP SysFS Creation and Mapping
 
@@ -2792,11 +2910,11 @@ If the S3IP sysfs is required on a PDDF platform, it can be represented using th
 ...
 ```
 
-This pddf-s3ip service would create the sysfs as per the standards. It will also take care of linking the appropriate PDDF sysfs with the corrosponding S3IP sysfs.
+This pddf-s3ip service would create the sysfs as per the standards. It will also take care of linking the appropriate PDDF sysfs with the corresponding S3IP sysfs.
 
 In case the platform does not support some attributes present in the S3IP spec, 'NA' will be written to the attribute file so that the application does not fail.
 
-Once this is done, users can run their S3IP compliant applicaitons and test scripts on the platform.
+Once this is done, users can run their S3IP compliant applications and test scripts on the platform.
 
 #### 7.2.3 Adding S3IP Support for a Platform
 
