@@ -80,10 +80,7 @@
 | 0.7 | 01/05/2023  |  Fuzail Khan, Precy Lee     | FPGAPCIe component support        |
 | 0.8 | 03/17/2023  |  Fuzail Khan, Precy Lee     | S3IP SysFS support        |
 | 0.9 | 05/31/2025  |  Nexthop AI                 | Multi-FPGAPCIe component support  |
-<<<<<<< HEAD
-=======
 | 1.0 | 10/26/2025  |  Nexthop AI                 | Multi-FPGAPCIe Multi-Protocol support |
->>>>>>> upstream/master
 
 # About this Manual
 Platform Driver Development Framework (PDDF) is part of SONiC Platform Development Kit (PDK), which enables rapid development of platform drivers and APIs for SONiC platforms. PDK consists of
@@ -1208,11 +1205,7 @@ Description of the fields inside *dev_attr*
 
 #### 3.4.13 Multi-FPGAPCIe Component
 
-<<<<<<< HEAD
-This can be a drop in replacement for [FPGAPCIe Component](#3412-pfgapcie-component). Multi-FPGAPCIe supports systems containing one or more PCIe FPGAs, where as [FPGAPCIe Component](#3412-pfgapcie-component) supported systems with a single PCIe FPGA only. With Multi-FPGAPCIe, each FPGA can be uniquely identified by its `BDF` in `Domain:Bus:Device.Function` format. For components (e.g LED, PSU, XCVR) managed by the Multi-FPGAPCIe system, `attr_devtype` must be set to `multifpgapci`, and `attr_bdf` must be set to the `BDF` of the associated FPGA.
-=======
 This can be a drop in replacement for [FPGAPCIe Component](#3412-pfgapcie-component). Multi-FPGAPCIe supports systems containing one or more PCIe FPGAs, where as [FPGAPCIe Component](#3412-pfgapcie-component) supported systems with a single PCIe FPGA only. With Multi-FPGAPCIe, each FPGA can be uniquely identified by its `BDF` in `Domain:Bus:Device.Function` format. For components (e.g LED, PSU, XCVR) managed by the Multi-FPGAPCIe system, `attr_devtype` must be set to `multifpgapci`, and `attr_devname` must match the `device_name` of the associated FPGA.
->>>>>>> upstream/master
 
 Multi-FPGAPCIe support the following PDDF components:
  - CPLDMUX
@@ -1224,11 +1217,7 @@ Multi-FPGAPCIe support the following PDDF components:
 Multi-FPGAPCIe supports the following IP blocks:
  - I2C (Assumes Xilinx I2C, like [FPGAPCIe Component](#3412-pfgapcie-component))
  - GPIO (TODO)
-<<<<<<< HEAD
  - SPI (Assumes Xilinx SPI)
-=======
- - SPI (TODO)
->>>>>>> upstream/master
 
 ##### 3.4.13.1 Multi-FPGAPCIe Sysfs Design
 
@@ -1352,7 +1341,6 @@ echo 1 > /sys/kernel/pddf/devices/multifpgapci/0000:04:00.0/i2c/new_i2c_adapter
 echo 0 > /sys/kernel/pddf/devices/multifpgapci/0000:04:00.0/i2c/del_i2c_adapter
 ```
 
-<<<<<<< HEAD
 #### 3.4.13.1.3 SPI Controller and Device Support
 
 PDDF provides support for SPI (Serial Peripheral Interface) controllers and SPI devices. This enables platforms to manage SPI-based peripherals such as FPGA configuration flash memories, boot flash devices, and other SPI-connected components through a standardized framework.
@@ -1640,8 +1628,6 @@ echo 'GE_FPGA_FLASH CPUCARD_SPI_CONTROLLER spi-nor 26000000 0' > /sys/kernel/pdd
 echo 'GE_FPGA_FLASH' > /sys/kernel/pddf/devices/spi/delete_spi_device
 ```
 
-=======
->>>>>>> upstream/master
 ##### 3.4.13.2 Multi-FPGAPCIe System JSON Design
 
 To inform the `multifpgapci` driver about the PCI Vendor ID and Device ID tuples it should look for on the PCIe bus.
@@ -1656,11 +1642,7 @@ See [3.4.13.1.1 Base FPGA Module Sysfs Controls](#341311-base-fpga-module-sysfs-
     "device_name": "MULTIFPGAPCIESYSTEM0",
     "device_parent": null
   },
-<<<<<<< HEAD
-  "i2c": {
-=======
   "dev_attr": {
->>>>>>> upstream/master
     "PCI_DEVICE_IDS": [
       {
         "vendor": "0x10ee",
@@ -1677,19 +1659,6 @@ See [3.4.13.1.1 Base FPGA Module Sysfs Controls](#341311-base-fpga-module-sysfs-
 
 Description of the fields inside *dev_info*
 
-<<<<<<< HEAD
-> **device_type**: Must be set to `MULTIFPGAPCIESYSTEM`
-
-> **device_name**: Must be set to `MULTIFPGAPCIESYSTEM0`
-
-> **device_parent**: Must be set to `null`
-
-Description of the fields within elements inside *PCI_VENDOR_IDS*
-
-> **vendor**: 16 bit hexadecimal which matches the FPGA's PCIe Vendor ID
-
-> **device**: 16 bit hexadecimal which matches the FPGA's PCIe Device ID
-=======
 > **device_type**: Must be set to `MULTIFPGAPCIESYSTEM`.
 
 > **device_name**: Must be set to `MULTIFPGAPCIESYSTEM0`.
@@ -1701,7 +1670,6 @@ Description of the fields within elements inside *PCI_VENDOR_IDS*
 > **vendor**: 16 bit hexadecimal which matches the FPGA's PCIe Vendor ID.
 
 > **device**: 16 bit hexadecimal which matches the FPGA's PCIe Device ID.
->>>>>>> upstream/master
 
 ##### 3.4.12.3 Multi-FPGAPCIe (per FPGA) JSON Design
 
@@ -1710,48 +1678,16 @@ Each FPGA must have their PCIe Device ID and Vendor ID matching those specified 
 See [3.4.13.1.2 I2C Module Sysfs Controls (Per-FPGA)](#341312-i2c-module-sysfs-controls-per-fpga) for the corresponding sysfs backend.
 
 ```
-<<<<<<< HEAD
-"MULTIFPGAPCIE0": {
-  "dev_info": {
-    "device_type": "MULTIFPGAPCIE",
-    "device_name": "CPU_FPGA",
-    "device_parent": "PCIE0",
-    "device_bdf": "0000:03:00.0",
-=======
 "MULTIFPGAPCIE1": {
   "dev_info": {
     "device_type": "MULTIFPGAPCIE",
     "device_name": "SWITCHCARD_FPGA",
     "device_parent": "PCIE0",
     "device_bdf": "0000:04:00.0",
->>>>>>> upstream/master
     "dev_attr": {}
   },
   "i2c": {
     "dev_attr": {
-<<<<<<< HEAD
-      "virt_bus": "0x4",
-      "ch_base_offset": "0x40000",
-      "ch_size": "0x200",
-      "num_virt_ch": "0x8"
-    },
-    "channel": [
-      {
-        "chn": "3",
-        "dev": "DPM1"
-      },
-      {
-        "chn": "6",
-        "dev": "EEPROM1"
-      },
-      {
-        "chn": "6",
-        "dev": "CPUTEMP1"
-      }
-    ]
-  }
-},
-=======
       "virt_bus": "0x13",
       "ch_base_offset": "0x40000",
       "ch_size": "0x200",
@@ -1764,20 +1700,13 @@ See [3.4.13.1.2 I2C Module Sysfs Controls (Per-FPGA)](#341312-i2c-module-sysfs-c
       { "chn": "3", "dev": "CPLDMUX2" },
       { "chn": "4", "dev": "PORT1" },
       ...
->>>>>>> upstream/master
 ```
 
 Description of fields unique to Multi-FPGAPCIe, see [FPGAPCIe JSON Design](#34121-fpgapcie-json-design) for description of i2c related fields.
 
-<<<<<<< HEAD
-> **device_type**: Must be set to `MULTIFPGAPCIE`
-
-> **device_name**: Must be set to `MULTIFPGAPCIESYSTEM0`
-=======
 > **device_type**: Must be set to `MULTIFPGAPCIE`.
 
 > **device_name**: Each FPGA must have a unique `device_name`.
->>>>>>> upstream/master
 
 > **device_bdf**: The FPGA's address in BDF (Domain:Bus:Device.Function) format.
 
@@ -1801,11 +1730,7 @@ Description of fields unique to Multi-FPGAPCIe, see [FPGAPCIe JSON Design](#3412
     "dev_attr": {
       "base_chan": "0x57",
       "num_chan": "4",
-<<<<<<< HEAD
-      "bdf": "0000:04:00.0"
-=======
       "cpld_name": "SWITCHCARD_FPGA"
->>>>>>> upstream/master
     },
     "channel": [
       {
@@ -1819,15 +1744,9 @@ Description of fields unique to Multi-FPGAPCIe, see [FPGAPCIe JSON Design](#3412
       ...
 ```
 
-<<<<<<< HEAD
-> **dev_type**: Must be set to `multifpgapci_mux`
-
-> **bdf**: The FPGA's address in BDF (Domain:Bus:Device.Function) format.
-=======
 > **dev_type**: Must be set to `multifpgapci_mux`.
 
 > **cpld_name**:  Must match the `device_name` of the FPGA which controls the mux channel selection.
->>>>>>> upstream/master
 
 ###### Multi-FPGAPCIe LED JSON
 
@@ -1845,12 +1764,7 @@ Description of fields unique to Multi-FPGAPCIe, see [FPGAPCIe JSON Design](#3412
       {
         "attr_name": "yellow",
         "attr_devtype": "multifpgapci",
-<<<<<<< HEAD
-        "attr_devname": "MULTIFPGAPCIE1",
-        "attr_bdf": "0000:04:00.0",
-=======
         "attr_devname": "SWITCHCARD_FPGA",
->>>>>>> upstream/master
         "bits": "3:0",
         "descr": "yellow",
         "value": "0x1",
@@ -1860,15 +1774,9 @@ Description of fields unique to Multi-FPGAPCIe, see [FPGAPCIe JSON Design](#3412
       ...
 ```
 
-<<<<<<< HEAD
-> **attr_devtype**: Must be set to `multifpgapci`
-
-> **attr_bdf**: The FPGA's address in BDF (Domain:Bus:Device.Function) format.
-=======
 > **attr_devtype**: Must be set to `multifpgapci`.
 
 > **attr_devname**: Must match the `device_name` of the FPGA which controls the LED's color.
->>>>>>> upstream/master
 
 ###### Multi-FPGAPCIe XCVR JSON
 
@@ -1891,12 +1799,7 @@ Description of fields unique to Multi-FPGAPCIe, see [FPGAPCIe JSON Design](#3412
         "attr_name": "xcvr_reset",
         "attr_devaddr": "0x0",
         "attr_devtype": "multifpgapci",
-<<<<<<< HEAD
-        "attr_devname": "MULTIFPGAPCIE1",
-        "attr_bdf": "0000:04:00.0",
-=======
         "attr_devname": "SWITCHCARD_FPGA",
->>>>>>> upstream/master
         "attr_offset": "0x34",
         "attr_mask": "0x0",
         "attr_cmpval": "0x0",
@@ -1905,15 +1808,9 @@ Description of fields unique to Multi-FPGAPCIe, see [FPGAPCIe JSON Design](#3412
       ...
 ```
 
-<<<<<<< HEAD
-> **attr_devtype**: Must be set to `multifpgapci`
-
-> **attr_bdf**: The FPGA's address in BDF (Domain:Bus:Device.Function) format.
-=======
 > **attr_devtype**: Must be set to `multifpgapci`.
 
 > **attr_devname**: Must match the `device_name` of the FPGA which controls the xcvr.
->>>>>>> upstream/master
 
 ###### Multi-FPGAPCIe PSU JSON
 
@@ -1935,31 +1832,18 @@ Description of fields unique to Multi-FPGAPCIe, see [FPGAPCIe JSON Design](#3412
       {
         "attr_name": "psu_present",
         "attr_devtype": "multifpgapci",
-<<<<<<< HEAD
-        "attr_devname": "MULTIFPGAPCIE1",
-        "attr_bdf": "0000:04:00.0",
-=======
         "attr_devname": "SWITCHCARD_FPGA",
->>>>>>> upstream/master
         "attr_offset": "0x98",
         "attr_mask": "0x400",
         "attr_cmpval": "0x400",
         "attr_len": "1"
       },
-<<<<<<< HEAD
-```
-
-> **attr_devtype**: Must be set to `multifpgapci`
-
-> **attr_bdf**: The FPGA's address in BDF (Domain:Bus:Device.Function) format.
-=======
       ...
 ```
 
 > **attr_devtype**: Must be set to `multifpgapci`.
 
 > **attr_devname**: Must match the `device_name` of the FPGA which reads the PSU's status.
->>>>>>> upstream/master
 
 ###### Multi-FPGAPCIe PSU JSON
 
@@ -1984,32 +1868,18 @@ Description of fields unique to Multi-FPGAPCIe, see [FPGAPCIe JSON Design](#3412
         "attr_name": "fan1_present",
         "attr_devaddr": "0x0",
         "attr_devtype": "multifpgapci",
-<<<<<<< HEAD
-        "attr_devname": "MULTIFPGAPCIE1",
-        "attr_bdf": "0000:04:00.0",
-=======
         "attr_devname": "SWITCHCARD_FPGA",
->>>>>>> upstream/master
         "attr_offset": "0xa4",
         "attr_mask": "0x000000f0",
         "attr_cmpval": "0x00000070",
         "attr_len": "1"
       },
       ...
-<<<<<<< HEAD
-
-```
-
-> **attr_devtype**: Must be set to `multifpgapci`
-
-> **attr_bdf**: The FPGA's address in BDF (Domain:Bus:Device.Function) format.
-=======
 ```
 
 > **attr_devtype**: Must be set to `multifpgapci`.
 
 > **attr_devname**: Must match the `device_name` of the FPGA which controls the fan.
->>>>>>> upstream/master
 
 #### 3.4.14 Multi-Protocol Support Design
 
