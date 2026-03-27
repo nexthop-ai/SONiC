@@ -133,33 +133,83 @@ The requirements in this section describe what behavior `sfputil` must provide o
 
 ### 6. Architecture Design 
 
-This section covers the changes that are required in the SONiC architecture. In general, it is expected that the current architecture is not changed.
-This section should explain how the new feature/enhancement (module/sub-module) fits in the existing architecture. 
-
-If this feature is a SONiC Application Extension mention which changes (if any) needed in the Application Extension infrastructure to support new feature.
+This HLD proposes no architectural change to SONiC.
 
 ### 7. High-Level Design 
 
-This section covers the high level design of the feature/enhancement. This section covers the following points in detail.
-		
-	- Is it a built-in SONiC feature or a SONiC Application Extension?
-	- What are the modules and sub-modules that are modified for this design?
-	- What are the repositories that would be changed?
-	- Module/sub-module interfaces and dependencies. 
-	- SWSS and Syncd changes in detail
-	- DB and Schema changes (APP_DB, ASIC_DB, COUNTERS_DB, LOGLEVEL_DB, CONFIG_DB, STATE_DB)
-	- Sequence diagram if required.
-	- Linux dependencies and interface
-	- Warm reboot requirements/dependencies
-	- Fastboot requirements/dependencies
-	- Scalability and performance requirements/impact
-	- Memory requirements
-	- Docker dependency
-	- Build dependency if any
-	- Management interfaces - SNMP, CLI, RestAPI, etc.,
-	- Serviceability and Debug (logging, counters, trace etc) related design
-	- Is this change specific to any platform? Are there dependencies for platforms to implement anything to make this feature work? If yes, explain in detail and inform community in advance.
-	- SAI API requirements, CLI requirements, ConfigDB requirements. Design is covered in following sections.
+This section describes how `sfputil` is extended to support composite SFPs and CPO hardware. All changes are confined to the `sonic-utilities` repository and reuse the composite SFP and platform APIs defined in the CPO port-mapping HLD.
+
+#### 7.1 Overall approach
+
+- The platform layer continues to return a per-port `SfpBase` object (for example, via `platform.get_sfp(port_index)`). Both traditional and composite SFPs are implemented as concrete subclasses of `SfpBase`; **any composite class** (such as `CpoSfpOptoeBase`) **MUST also implement `CompositeSfpBase`** so that its internal devices can be introspected where needed, but from `sfputil`'s perspective everything is accessed through the `SfpBase` interface.
+- `sfputil` invokes high-level methods on `SfpBase` (for example, `read_eeprom`, `write_eeprom`, power/low-power/reset control, firmware operations), always forwarding any optional device selector from the CLI (for example, `-d/--device`) as a method parameter when present.
+- The concrete `SfpBase` implementation is responsible for abstracting away whether the underlying hardware is composite or not:
+  - Non-composite implementations may ignore the device selector argument.
+  - Composite implementations internally route the call to one or more underlying devices as appropriate.
+  - For operations that logically require a specific target device (for example, `read_eeprom` on a CPO-backed port without a MCU map), the implementation must validate that a target device was supplied; if not, it raises a well-defined exception.
+- `sfputil` command handlers follow almost the same flow for all commands:
+  1. Resolve the logical port (`-p/--port`) to a platform `SfpBase` object.
+  2. Parse any optional device selector (`-d/--device`) from the CLI and pass it to the relevant `SfpBase` method.
+  3. Catch any exceptions raised by the `SfpBase` implementation (for example, "device required but not specified", "invalid device name for this port") and translate them into clear, user-facing error messages that reference `sfputil show devices` where appropriate.
+
+This keeps composite-specific logic encapsulated inside the composite-SFP implementation, while `sfputil` justremains a CLI wrapper that enforces consistent argument parsing and error reporting across platforms.
+
+#### 7.2 Device enumeration and naming
+
+- A new `sfputil show devices` command is introduced as the primary way to discover the internal devices associated with a logical port.
+  - For composite SFPs, it lists one row per internal device, including at least: device name, device type (for example, "Optical Engine", "External Laser Source"), and any platform-provided bank or identifier information.
+  - For non-composite SFPs, it may return a single row representing the underlying device, or a short message indicating that the port is not composite.
+- Device names exposed by `sfputil` are taken from the platform implementation (for example, `OE1`, `ELS1`) so that they align with the identifiers used in `optical_devices.json` and the composite SFP implementation.
+- All other `sfputil` commands that accept a device selector use these same names.
+
+#### 7.3 Device selector semantics (`-d/--device`)
+
+- Commands that act on EEPROM contents or device-specific control bits (`read-eeprom`, `write-eeprom`, `power`, `lpmode`, `reset`, `firmware`, selected `debug` subcommands) accept a new optional argument `-d/--device <device-name>`. `sfputil` does not itself interpret the device name beyond basic parsing; it passes the value through to the underlying `SfpBase` implementation.
+- Non-composite `SfpBase` implementations may treat any non-empty device selector as invalid (for example, by raising an exception that `sfputil` surfaces as a CLI error instructing the user to omit `-d`).
+- Composite `SfpBase` implementations use the selector to choose which internal device(s) to operate on. For methods that logically require a specific device (for example, `read_eeprom` on hardware without a unified EEPROM map), the implementation must:
+  - raise an exception if the selector is missing or does not resolve to a valid internal device for that port; and
+  - include in the exception message enough context for `sfputil` to emit a helpful error (for example, "EthernetX is a composite SFP; device must be specified").
+- For control-plane operations that are naturally symmetric across devices (`power`, `lpmode`, `reset`), composite implementations may define a reasonable default when the selector is omitted (for example, apply the operation to all internal devices) while still allowing the caller to target a single device when `-d` is present.
+- `sfputil` is responsible for catching these exceptions and converting them into consistent, user-facing error messages, optionally suggesting that the user run `sfputil show devices -p <port>` to discover valid device names.
+
+#### 7.4 Command behavior on CPO-backed ports
+
+At a high level, the behavior of each existing `sfputil` command on CPO-backed ports is as follows (detailed CLI examples and options will be covered in Section 9):
+
+- **read-eeprom / write-eeprom**
+  - Reuse the current CLI (`-p/--port`, `-n/--page`, `-o/--offset`, `-s/--size`, formatting options) and add `-d/--device`.
+  - On composite SFPs, `sfputil` selects the target internal device based on `-d` or the platform's default-device policy (as described in 7.3) and issues the EEPROM access through that device.
+  - `sfputil` does not attempt to interpret the device's CMIS or CPO memory layout; it relies entirely on the platform and underlying Xcvr API to implement the correct mapping of page/offset to physical EEPROM locations, including bank selection.
+
+- **power enable/disable**
+  - For non-composite ports, behavior is unchanged.
+  - For composite CPO ports:
+    - With `-d/--device`, only the selected device's power state is changed (for example, OE-only or ELS-only).
+    - Without `-d`, `sfputil` attempts to enable/disable power on all internal devices associated with the port. If the platform only exposes power control for a subset of devices, `sfputil` logs or reports which devices were successfully updated.
+
+- **lpmode on/off**
+  - Mirrors the semantics of the power command:
+    - `-d/--device` targets a specific internal device.
+    - Omitting `-d` attempts to apply the low-power-mode change to all internal devices associated with the port, subject to platform support.
+
+- **reset**
+  - For composite ports, reset operations may affect either a single device or all devices:
+    - With `-d/--device`, only the specified internal device is reset.
+    - Without `-d`, `sfputil` issues reset requests to all internal devices that support reset, so that the logical port is fully reset.
+
+- **firmware**
+  - The firmware subcommands (for example, download/upgrade) are extended to accept `-p/--port` and optional `-d/--device` so that firmware can be upgraded independently on OE and ELS devices where supported.
+  - Where joint-mode or platform policies require coordinated upgrades (for example, OE and ELS firmware must be updated together), platform logic behind the composite SFP is responsible for enforcing the correct sequence; from the CLI perspective, the same `sfputil firmware` interface is used.
+
+- **debug and show**
+  - Existing `sfputil show` output is extended to display whether a port is composite and, where appropriate, high-level status aggregated across all internal devices.
+  - Debug subcommands that expose raw EEPROM contents or other device-specific diagnostics are treated like EEPROM operations: they use `-d/--device` to select an internal device and follow the same rules when the selector is omitted.
+  - Commands used by `show techsupport` to collect EEPROM hexdumps are updated to iterate over internal devices on composite ports so that both OE and ELS data can be captured when desired.
+
+- **version**
+  - The `sfputil version` command remains unchanged; it is not device- or port-specific and therefore has no composite-specific behavior.
+
+These behaviors ensure that all existing `sfputil` commands can operate on CPO-backed ports while providing explicit, predictable control over each internal device when required.
 
 ### 8. SAI API 
 
