@@ -12,45 +12,45 @@ Rev 1.3
 
 \[High Level Design Document\]
 
-[Rev 1.0](#heading=h.snl1xsdxyqtx)
+[Rev 1.0]
 
-[Table of Contents](#table-of-contents)
+[Table of Contents]
 
-[Revision](#revision)
+[Revision]
 
-[About this Manual](#about-this-manual)
+[About this Manual]
 
-[Scope](#scope)
+[Scope]
 
-[1 Requirements Overview](#1-requirements-overview)
+[1 Requirements Overview]
 
-[1.1 Functional Requirements](#1.1-functional-requirements)
+[1.1 Functional Requirements]
 
-[1.2 Configuration requirements](#1.2-configuration-requirements)
+[1.2 Configuration requirements]
 
-[1.3 Agent requirements](#1.3-agent-requirements)
+[1.3 Agent requirements]
 
-[1.3.1 Orchagent](#1.3.1-orchagent)
+[1.3.1 Orchagent]
 
-[1.3.2 Bgpconfd](#1.3.2-bgpconfd)
+[1.3.2 Bgpconfd]
 
-[1.3.3 Sonic-utilities](#1.3.3-sonic-utilities)
+[1.3.3 Sonic-utilities]
 
-[1.3.4 Sonic-host-services Caclmgrd](#1.3.4-sonic-host-services-caclmgrd)
+[1.3.4 Sonic-host-services Caclmgrd]
 
-[2 Modules Design](#2-modules-design)
+[2 Modules Design]
 
-[2.1 Switch Type “VOQ” For Both Chassis and Single-ASIC cases](#2.1-switch-type-“voq”-for-both-chassis-and-single-asic-cases)
+[2.1 Switch Type “VOQ” For Both Chassis and Single-ASIC cases]
 
-[2.1.1 Orchagent Changes](#2.1.1-orchagent-changes)
+[2.1.1 Orchagent Changes]
 
-[2.1.2 Bgpconfd Changes](#2.1.2-bgpconfd-changes)
+[2.1.2 Bgpconfd Changes]
 
-[2.1.3 Sonic-utilities, Sonic-host-services/Caclmgrd Changes](#2.1.3-sonic-utilities,-sonic-host-services/caclmgrd-changes)
+[2.1.3 Sonic-utilities, Sonic-host-services/Caclmgrd Changes]
 
-[2.1.4 CLI Changes](#2.1.4-cli-changes)
+[2.1.4 CLI Changes]
 
-[2.1.5 Config Generation Changes](#2.1.5-config-generation-changes)
+[2.1.5 Config Generation Changes]
 
 # 
 
@@ -58,7 +58,7 @@ Rev 1.3
 
 | Rev | Date | Author | Change Description |
 | :---- | :---- | :---- | :---- |
-| 1.0 | 06/10/2025 | Eswaran Baskaran[Lakshmi Yarramaneni](mailto:lakshmi@nexthop.ai) | Initial public version |
+| 1.0 | 06/10/2025 | Eswaran Baskaran[Lakshmi Yarramaneni](mailto:lakshmi@nexthop.ai) | Initial public version |
 | 1.1 | 06/23/2025 | Lakshmi Yarramaneni | Details on single-ASIC VOQ flag |
 | 1.2 | 7/1/2025 | Lakshmi Yarramaneni | Updated to use chassis config file |
 | 1.3 | 8/13/2025 | Lakshmi Yarramaneni | Added details about neighbors and mirror orch. |
@@ -85,7 +85,7 @@ iBGP configuration that was generated for chassis-based VOQ systems is not neede
 
 Compared to a chassis system that required all system ports to be configured across all linecards Sonic instances, the single-asic-voq system only needs a system port to be configured for each local port.
 
-We do not need to create the inband port or the recirculation port in single-asic-voq systems. We will continue to need fabric ports so that fabric port statistics can be exposed.
+We do not need to create the inband port in single-asic-voq systems. We will continue to need fabric ports so that fabric port statistics can be exposed.
 
 ## **1.4 Agent requirements**
 
@@ -98,8 +98,7 @@ We do not need to create the inband port or the recirculation port in single-asi
 
   ### **1.4.2 Bgpconfd**
 
-- Spawn off ChassisDbMgr only on Chassis VOQ system but not on single-ASIC VOQ
-
+- Spawn off ChassisDbMgr only on Chassis VOQ system but not on single-ASIC VOQ  
 
   ### **1.4.3 Sonic-utilities**
 
@@ -129,7 +128,7 @@ API *is\_voq\_chassis* will check for the presence of the *chassisdb.conf* file.
 
 - Orchagent will handle VOQ functionality the same way i.e. creation of system ports. But connect to Chassis DB only if chassis DB is supported in the sonic system.  
     
-- Given the inband and recirculation ports are not created, we need to make sure mirrororch, neighorch, etc are updated to not look for these ports in single-asic-voq mode.
+- Given the inband ports are not created, we need to make sure orchagent is updated to not look for these ports in single-asic-voq mode.
 
 ### **2.1.2 Bgpconfd Changes**
 
