@@ -1,4 +1,4 @@
-# HLD Name #
+# SFPUtil Support for Composite SFPs #
 
 ## Table of Content 
 
@@ -9,6 +9,11 @@
 - [5. Requirements](#5-requirements)
 - [6. Architecture Design](#6-architecture-design)
 - [7. High-Level Design](#7-high-level-design)
+  - [7.1 Overall approach](#71-overall-approach)
+  - [7.2 Device enumeration and naming](#72-device-enumeration-and-naming)
+  - [7.3 Device selector semantics (`-d/--device`)](#73-device-selector-semantics-ddevice)
+  - [7.4 Command behavior on CPO-backed ports](#74-command-behavior-on-cpo-backed-ports)
+  - [7.5 Example base and composite implementations](#75-example-base-and-composite-implementations)
 - [8. SAI API](#8-sai-api)
 - [9. Configuration and management](#9-configuration-and-management)
   - [9.1 Manifest (if the feature is an Application Extension)](#91-manifest-if-the-feature-is-an-application-extension)
@@ -336,38 +341,120 @@ In this model, `sfputil` does not need to know whether a port is composite or ho
 There are no changes to SAI API in this HLD.
 
 ### 9. Configuration and management 
-This section should have sub-sections for all types of configuration and management related design. Example sub-sections for "CLI" and "Config DB" are given below. Sub-sections related to data models (YANG, REST, gNMI, etc.,) should be added as required.
-If there is breaking change which may impact existing platforms, please call out in the design and get platform vendors reviewed. 
+
+This section describes the user-visible configuration and management changes associated with extending `sfputil` for CPO and composite SFPs. As this HLD is limited to CLI behavior in `sonic-utilities`, the primary impact is on the `sfputil` command set and its documentation.
 
 #### 9.1. Manifest (if the feature is an Application Extension)
 
-Paste a preliminary manifest in a JSON format.
+This feature is not implemented as a SONiC Application Extension. No manifest changes are required.
 
 #### 9.2. CLI/YANG model Enhancements 
 
-This sub-section covers the addition/deletion/modification of CLI changes and YANG model changes needed for the feature in detail. If there is no change in CLI for HLD feature, it should be explicitly mentioned in this section. Note that the CLI changes should ensure downward compatibility with the previous/existing CLI. i.e. Users should be able to save and restore the CLI from previous release even after the new CLI is implemented. 
-This should also explain the CLICK and/or KLISH related configuration/show in detail.
-https://github.com/sonic-net/sonic-utilities/blob/master/doc/Command-Reference.md needs be updated with the corresponding CLI change.
+This HLD introduces CLI extensions to `sfputil` but does not change any YANG models.
+
+##### 9.2.1 New `sfputil show devices` command
+
+A new command is added to allow users to list the internal devices associated with a logical port:
+
+```text
+$ sfputil show devices -p <port>
+Device Name    Type                   Bank  Part Number  Vendor
+-----------    ---------------------  ----  -----------  ----------------
+OE1            Optical Engine         0     ...          ...
+ELS1           External Laser Source  0     ...          ...
+```
+
+- For **composite** SFPs (for example, CPO ports with OE and ELS devices), this command lists one row per internal device, including at least the device name and type. Platforms may optionally populate additional columns (for example, bank, part number, vendor) if that information is readily available.
+- For **non-composite** SFPs, the command may either return a single row describing the underlying device or print a short message indicating that the port is not composite.
+
+The device names shown by this command (for example, `OE1`, `ELS1`) are the same identifiers accepted by the `-d/--device` option described below.
+
+##### 9.2.2 Optional `-d/--device` selector for existing commands
+
+All `sfputil` commands that operate on a specific transceiver device are extended with an optional device selector argument:
+
+```text
+-d DEVICE, --device DEVICE
+    Name of the internal device backing the specified port (for example, OE1, ELS1).
+```
+
+This option is accepted by at least the following commands:
+
+- `sfputil read-eeprom`
+- `sfputil write-eeprom`
+- `sfputil power enable` / `sfputil power disable`
+- `sfputil lpmode on` / `sfputil lpmode off`
+- `sfputil reset`
+- `sfputil firmware ...` subcommands
+- Selected `sfputil debug ...` subcommands that access EEPROM or device-local control bits
+
+Example CLI invocations:
+
+```text
+# Read 2 bytes from page 0, offset 0 on the optical engine for Ethernet224
+$ sfputil read-eeprom -p Ethernet224 -n 0 -o 0 -s 2 -d OE1
+
+# Power-cycle only the external laser source on Ethernet0
+$ sfputil power disable Ethernet0 -d ELS1
+$ sfputil power enable  Ethernet0 -d ELS1
+
+# Apply low-power mode to all devices associated with Ethernet8
+$ sfputil lpmode on Ethernet8
+
+# Upgrade firmware on the OE backing Ethernet32
+$ sfputil firmware download -p Ethernet32 -d OE1 --image /tmp/oe-fw.bin
+```
+
+Behavior is as follows:
+
+- On **non-composite** ports, specifying `-d/--device` is treated as invalid; the underlying `SfpBase` implementation raises an error which `sfputil` surfaces as a CLI error instructing the user to omit the device selector.
+- On **composite** ports:
+  - For operations that **require** a specific target device (for example, `read-eeprom` on hardware where OE and ELS EEPROMs are independent and not remapped by an MCU), omitting `-d/--device` causes the `SfpBase` implementation to raise an exception. `sfputil` converts this into an error message indicating that the port is composite and that a device must be specified, and suggests running `sfputil show devices -p <port>`.
+  - For operations that are naturally symmetric across devices (for example, `power`, `lpmode`, `reset`), omitting `-d/--device` is interpreted by composite implementations as "apply to all internal devices". Supplying `-d/--device` limits the operation to the named device.
+
+These CLI changes are designed to be backward compatible: existing commands and options continue to behave as before on non-composite platforms, and additional behavior is only enabled when composite SFPs are present and a device selector is used.
+
+SONiC's `Command-Reference.md` in `sonic-utilities` will be updated to document the new `sfputil show devices` command and the `-d/--device` option for the affected commands.
+
+##### 9.2.3 No YANG model changes
+
+This HLD does not introduce any new management models or augment existing YANG definitions. All CPO-related YANG and Config DB schema changes (such as `OPTICAL_DEVICE` and `associated_devices`) are covered by the CPO port-mapping HLD and reused here.
 
 #### 9.3. Config DB Enhancements  
 
-This sub-section covers the addition/deletion/modification of config DB changes needed for the feature. If there is no change in configuration for HLD feature, it should be explicitly mentioned in this section. This section should also ensure the downward compatibility for the change. 
+This HLD introduces **no new Config DB schema** or keys.
+
+- The mapping between interfaces and optical devices (including OE and ELS) is modeled via `optical_devices.json` and the corresponding CONFIG_DB enhancements described in the CPO port-mapping HLD (for example, `associated_devices` and `OPTICAL_DEVICE`).
+- `sfputil` reads this information indirectly via the platform APIs and composite SFP abstractions; it does not write to or extend CONFIG_DB.
+
+As a result, there are no backward-compatibility concerns for configuration files specific to this HLD.
 		
 ### 10. Warmboot and Fastboot Design Impact  
-Mention whether this feature/enhancement has got any requirements/dependencies/impact w.r.t. warmboot and fastboot. Ensure that existing warmboot/fastboot feature is not affected due to this design and explain the same.
 
-### Warmboot and Fastboot Performance Impact
-This sub-section must cover the impact of the functionality on warmboot and fastboot performance, that is control plane and data plane downtime.
-As part of the analysis cover the flowing:
+There is no warmboot or fastboot design impact specific to this HLD.
 
-- Does this feature add any stalls/sleeps/IO operations to the boot critical chain? Does it change when this feature is disabled/unused? 
-- Does this feature add any additional CPU heavy processing (e.g. rendering Jinja templates) in the boot path (process, library or utility used during boot up)? Does it change when this feature is disabled/unused?
-- In case this feature updates a third party dependency does it cause any impact on boot time performance?
-- Can the feature (service or docker) be delayed?
-- What are the possible optimizations and what is the expected boot time degradation if, by the nature of the feature, additional CPU/IO costs can't be avoided?
+- All changes are confined to the `sfputil` CLI and its use of existing platform APIs. No new daemons, services or long-running processes are introduced.
+- `sfputil` continues to be invoked on demand by users or higher-level tools (for example, `show` or `show techsupport`) and is not part of the boot-critical control plane path.
+- Any additional work performed by `sfputil` on composite SFPs (for example, resolving internal devices or iterating over them) occurs only when commands are explicitly executed and therefore does not affect warmboot or fastboot sequencing.
+
+#### Warmboot and Fastboot Performance Impact
+
+Given that `sfputil` is not in the warmboot/fastboot critical path and no new boot-time initialization is added as part of this HLD, there is no expected change in control-plane or data-plane downtime during warmboot or fastboot.
+
+In particular:
+
+- No new blocking I/O, network calls heavy processing is added to boot-time components.
+- No additional dependencies are introduced for services involved in warmboot/fastboot.
+- When the feature is unused (for example, on non-composite platforms), there is effectively zero impact.
 
 ### 11. Memory Consumption
-This sub-section covers the memory consumption analysis for the new feature: no memory consumption is expected when the feature is disabled via compilation and no growing memory consumption while feature is disabled by configuration. 
+
+There should be no noteworthy change in memory consumption from the changes in this HLD.
+
+- The additional logic in `sfputil` consists of argument parsing, simple branching, and invoking existing platform APIs.
+- No long-lived data structures are introduced; any temporary objects (for example, lists of devices returned by composite SFP APIs) are created and freed within the lifetime of a single CLI invocation.
+- When composite SFP support is not used (for example, on platforms without CPO hardware), the memory footprint is effectively identical to the existing `sfputil` utility.
+
 ### 12. Restrictions/Limitations  
 
 ### 13. Testing Requirements/Design  
