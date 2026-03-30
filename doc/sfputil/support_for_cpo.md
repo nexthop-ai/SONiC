@@ -14,6 +14,7 @@
   - [7.3 Device selector semantics (`-d/--device`)](#73-device-selector-semantics-ddevice)
   - [7.4 Command behavior on CPO-backed ports](#74-command-behavior-on-cpo-backed-ports)
   - [7.5 Example base and composite implementations](#75-example-base-and-composite-implementations)
+  - [7.6 Rationale for CompositeSfpBase and CpoSfpOptoeBase](#76-rationale-for-compositesfpbase-and-cposfpoptoebase)
 - [8. SAI API](#8-sai-api)
 - [9. Configuration and management](#9-configuration-and-management)
   - [9.1 Manifest (if the feature is an Application Extension)](#91-manifest-if-the-feature-is-an-application-extension)
@@ -308,6 +309,38 @@ class CpoSfpOptoeBase(SfpOptoeBase, CompositeSfpBase):
 ```
 
 In this model, `sfputil` does not need to know whether a port is composite or how many internal devices exist. It simply passes the optional device selector (for example, `-d/--device`) through to the `SfpBase` methods and reports any exceptions (for example, missing device selector for a composite-only operation) as user-facing CLI errors.
+
+#### 7.6 Rationale for CompositeSfpBase and CpoSfpOptoeBase
+
+The design introduces an explicit `CompositeSfpBase` interface and a CPO-specific base class `CpoSfpOptoeBase` in addition to the existing `SfpOptoeBase` for several reasons:
+
+- **Separation of concerns between per-device logic and composition**  
+  `SfpOptoeBase` is fundamentally a helper for talking to a *single* optoe-backed SFP (via `XcvrApi`). It does not, and should not, encode semantics about multiple devices being grouped into a single logical port. By adding `CompositeSfpBase(SfpBase)` we give composite implementations a clear, contract for:
+  - Enumerating their internal devices (`get_internal_devices()` / `get_internal_device(name)`), and
+  - Exposing a composite view of those devices where needed.
+
+- **A generic way for tooling to discover composite SFPs**  
+  With `CompositeSfpBase`, any consumer (including `sfputil`) can determine whether a port is composite and, if so, query its internals. This is essential for features such as:
+  - `sfputil show devices -p <port>` (device enumeration), and
+  - Commands that need to iterate over OE/ELS devices.  
+  Without a dedicated composite base, callers would have to hard-code knowledge of vendor-specific subclasses or rely on ad-hoc methods on `SfpOptoeBase`, making the abstraction not portable.
+
+- **Preserving the existing SfpOptoeBase contract for non-composite SFPs**  
+  If composite behavior were added directly to `SfpOptoeBase`, every non-composite implementation would inherit composite-related APIs that do not make sense for it (for example, `get_internal_devices()` returning an empty list, or raising by convention). Introducing `CompositeSfpBase` keeps `SfpOptoeBase` focused on per-device behavior and makes composite capabilities explicit only where they are needed.
+
+- **CpoSfpOptoeBase as the glue for CPO logical ports**  
+  `CpoSfpOptoeBase(SfpOptoeBase, CompositeSfpBase)` exists to bridge the gap between the per-device world and the composite world for CPO ports:
+  - As an `SfpOptoeBase`, it continues to look like a normal optoe-backed SFP to existing SONiC components that are unaware of CPO.
+  - As a `CompositeSfpBase`, it can hold internal `SfpOptoeBase` instances for the OE and ELS devices and provide the necessary introspection.  
+  This allows `sfputil` and other tools to interact with CPO ports purely through the `SfpBase`/`CompositeSfpBase` abstractions while all hardware-specific details (how OE and ELS are wired, whether an MCU provides a joint view, etc.) remain hidden inside the composite implementation.
+
+- **Centralizing CPO-specific semantics**  
+  By putting CPO composition logic into `CpoSfpOptoeBase` (and its vendor subclasses), we avoid duplicating the “OE + ELS” wiring and device-selection rules across multiple call sites. In particular, rules like:
+  - "`read_eeprom` on a CPO port requires a device selector", and
+  - "`power`/`lpmode` may default to all devices when `device` is omitted"  
+  are enforced once in the composite SFP implementation. `sfputil` simply forwards the optional `-d/--device` argument and surfaces any exceptions as user-facing CLI errors.
+
+Taken together, `CompositeSfpBase` and `CpoSfpOptoeBase` let SONiC support CPO-backed, composite SFPs in a way that is both backward compatible (non-composite platforms continue to use `SfpOptoeBase` as before) and extensible future composite transceiver patterns can reuse the same abstraction without modifying `sfputil` or `SfpOptoeBase`.
 
 ### 8. SAI API 
 
