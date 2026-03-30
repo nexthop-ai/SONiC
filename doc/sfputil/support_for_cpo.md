@@ -218,7 +218,7 @@ These behaviors ensure that all existing `sfputil` commands can operate on CPO-b
 
 #### 7.5 Example base and composite implementations
 
-The following examples illustrate how the `SfpBase` and composite SFP classes can be structured to support an optional device selector while keeping composite-specific logic inside the platform implementation. These are illustrative only; exact method signatures may be refined during implementation.
+The following examples illustrate how the `SfpBase`, `SfpOptoeBase` (non-composite), and composite SFP classes can be structured to support an optional device selector while keeping composite-specific logic inside the platform implementation.
 
 ```python
 class SfpBase(abc.ABC):
@@ -238,51 +238,30 @@ class SfpBase(abc.ABC):
         disambiguate which internal device to read from.
         """
         ...
-
-    @abc.abstractmethod
-    def set_power(self, enable: bool, device: typing.Optional[str] = None) -> None:
-        """Enable or disable module power.
-
-        Composite implementations may apply this to one or more internal
-        devices depending on the selector and platform policy.
-        """
-        ...
-
-    @abc.abstractmethod
-    def set_lpmode(self, enable: bool, device: typing.Optional[str] = None) -> None:
-        """Enable or disable low power mode."""
-        ...
-
-    @abc.abstractmethod
-    def reset(self, device: typing.Optional[str] = None) -> None:
-        """Reset the transceiver or a specific internal device."""
-        ...
 ```
 
 ```python
-class VendorSfp(SfpBase):
-    """Traditional (non-composite) SFP implementation."""
+class SfpOptoeBase(SfpBase):
+    """Existing base class for optoe-backed, non-composite SFPs."""
 
-    def read_eeprom(self, page, offset, size, device=None):
+    def read_eeprom(
+        self,
+        page: int,
+        offset: int,
+        size: int,
+        device: std | None = None,
+    ) -> bytes:
         if device is not None:
             raise ValueError("Device selector is not valid for non-composite SFPs")
-        # Existing single-device EEPROM access logic
+        # Existing single-device EEPROM access logic 
         return self._read_eeprom_raw(page, offset, size)
 
-    def set_power(self, enable, device=None):
-        if device is not None:
-            raise ValueError("Device selector is not valid for non-composite SFPs")
-        self._set_power_impl(enable)
 
-    def set_lpmode(self, enable, device=None):
-        if device is not None:
-            raise ValueError("Device selector is not valid for non-composite SFPs")
-        self._set_lpmode_impl(enable)
+class VendorSfp(SfpOptoeBase):
+    """Concrete non-composite SFP for a specific platform/vendor."""
 
-    def reset(self, device=None):
-        if device is not None:
-            raise ValueError("Device selector is not valid for non-composite SFPs")
-        self._reset_impl()
+    def _read_eeprom_raw(self, page: int, offset: int, size: int) -> bytes:
+        ...  # Platform-specific implementation
 ```
 
 ```python
@@ -307,8 +286,18 @@ class CpoSfpOptoeBase(SfpOptoeBase, CompositeSfpBase):
             return self._els
         raise ValueError(f"No internal SFP found for {name}")
 
-    # Example: operations that require a specific target device
-    def read_eeprom(self, page, offset, size, device=None):
+    def read_eeprom(
+        self,
+        page: int,
+        offset: int,
+        size: int,
+        device: typing.Optional[str] = None,
+    ) -> bytes:
+        """Read bytes from the EEPROM of a specific internal device.
+
+        This operation requires a device selector because OE and ELS
+        expose independent EEPROMs.
+        """
         if device is None:
             raise ValueError(
                 "Composite CPO SFP requires a device selector for read_eeprom; "
@@ -316,25 +305,9 @@ class CpoSfpOptoeBase(SfpOptoeBase, CompositeSfpBase):
             )
         target = self.get_internal_device(device)
         return target.read_eeprom(page, offset, size)
-
-    # Example: operations that can reasonably default to "all devices"
-    def set_power(self, enable, device=None):
-        targets = [self.get_internal_device(device)] if device else self.get_internal_devices()
-        for t in targets:
-            t.set_power(enable)
-
-    def set_lpmode(self, enable, device=None):
-        targets = [self.get_internal_device(device)] if device else self.get_internal_devices()
-        for t in targets:
-            t.set_lpmode(enable)
-
-    def reset(self, device=None):
-        targets = [self.get_internal_device(device)] if device else self.get_internal_devices()
-        for t in targets:
-            t.reset()
 ```
 
-In this model, `sfputil` does not need to know whether a port is composite or how many internal devices exist. It simply passes the optional device selector through to the `SfpBase` methods and reports any exceptions (for example, missing device selector for `read_eeprom` on a composite port) as user-facing CLI errors.
+In this model, `sfputil` does not need to know whether a port is composite or how many internal devices exist. It simply passes the optional device selector (for example, `-d/--device`) through to the `SfpBase` methods and reports any exceptions (for example, missing device selector for a composite-only operation) as user-facing CLI errors.
 
 ### 8. SAI API 
 
@@ -420,7 +393,7 @@ SONiC's `Command-Reference.md` in `sonic-utilities` will be updated to document 
 
 This HLD does not introduce any new management models or augment existing YANG definitions. All CPO-related YANG and Config DB schema changes (such as `OPTICAL_DEVICE` and `associated_devices`) are covered by the CPO port-mapping HLD and reused here.
 
-#### 9.3. Config DB Enhancements  
+#### 9.3 Config DB Enhancements  
 
 This HLD introduces **no new Config DB schema** or keys.
 
