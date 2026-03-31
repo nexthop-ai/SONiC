@@ -11,7 +11,7 @@
 - [7. High-Level Design](#7-high-level-design)
   - [7.1 Overall approach](#71-overall-approach)
   - [7.2 Device enumeration and naming](#72-device-enumeration-and-naming)
-  - [7.3 Device selector semantics (`-d/--device`)](#73-device-selector-semantics-ddevice)
+  - [7.3 Device selector semantics (`-d/--device`)](#73-device-selector-semantics--d--device)
   - [7.4 Command behavior on CPO-backed ports](#74-command-behavior-on-cpo-backed-ports)
   - [7.5 Example base and composite implementations](#75-example-base-and-composite-implementations)
   - [7.6 Rationale for CompositeSfpBase and CpoSfpOptoeBase](#76-rationale-for-compositesfpbase-and-cposfpoptoebase)
