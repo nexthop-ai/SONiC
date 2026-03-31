@@ -39,7 +39,7 @@ The CPO port-mapping HLD (/doc/platform/port_mapping_for_cpo.md) introduces the 
 As a result, `sfputil` needs to support the following:
 
 - Provide a consistent user experience for core xcvr operations (`read-eeprom`, `write-eeprom`, `power`, `lpmode`, `reset`, `show`, and some debug commands) on both single-device and composite SFPs.
-- Allow users to explicitly select an underlying device (for example, optical engine vs. external laser source) when operating on a CPO-backed DUT, while still behaving naturally for traditional non-composite ports.
+- Allow users to explicitly select an underlying device (for example, optical engine vs. external laser source) when operating on a CPO-backed platform, while still behaving naturally for traditional non-composite ports.
 - Handle platforms where CPO hardware is managed either via separate devices or via a joint-mode that presents a unified EEPROM view, including cases where an explicit device selector is required to disambiguate accesses.
 - Surface clear, actionable error messages when commands are ambiguous (for example, attempting to read EEPROM on a composite SFP without specifying a device) or when a requested operation is not applicable to a given internal device.
 - Integrate with existing platform APIs for composite SFPs to locate the appropriate internal device(s) for a logical port and route operations accordingly, without requiring broader architectural changes. Part of this is already proposed in the CPO port-mapping HLD.
