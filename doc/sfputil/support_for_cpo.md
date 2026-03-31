@@ -175,7 +175,7 @@ This keeps composite-specific logic encapsulated inside the composite-SFP implem
 - Composite `SfpBase` implementations use the selector to choose which internal device(s) to operate on. For methods that logically require a specific device (for example, `read_eeprom` on hardware without a unified EEPROM map), the implementation must:
   - raise an exception if the selector is missing or does not resolve to a valid internal device for that port; and
   - include in the exception message enough context for `sfputil` to emit a helpful error (for example, "EthernetX is a composite SFP; device must be specified").
-- For control-plane operations that are naturally symmetric across devices (`power`, `lpmode`, `reset`), composite implementations may define a reasonable default when the selector is omitted (for example, apply the operation to all internal devices) while still allowing the caller to target a single device when `-d` is present.
+- For operations that are naturally symmetric across devices (`power`, `lpmode`, `reset`), composite implementations may define a reasonable default when the selector is omitted (for example, apply the operation to all internal devices) while still allowing the caller to target a single device when `-d` is present.
 - `sfputil` is responsible for catching these exceptions and converting them into consistent, user-facing error messages, optionally suggesting that the user run `sfputil show devices -p <port>` to discover valid device names.
 
 #### 7.4 Command behavior on CPO-backed ports
@@ -210,10 +210,10 @@ At a high level, the behavior of each existing `sfputil` command on CPO-backed p
 - **debug and show**
   - Existing `sfputil show` output is extended to display whether a port is composite and, where appropriate, high-level status aggregated across all internal devices.
   - Debug subcommands that expose raw EEPROM contents or other device-specific diagnostics are treated like EEPROM operations: they use `-d/--device` to select an internal device and follow the same rules when the selector is omitted.
-  - Commands used by `show techsupport` to collect EEPROM hexdumps are updated to iterate over internal devices on composite ports so that both OE and ELS data can be captured when desired.
+  - Commands used by `show techsupport` to collect EEPROM hexdumps are updated to iterate over internal devices on composite ports so that both OE and ELS data can be captured as needed.
 
 - **version**
-  - The `sfputil version` command remains unchanged; it is not device- or port-specific and therefore has no composite-specific behavior.
+  - The `sfputil version` command remains unchanged.
 
 These behaviors ensure that all existing `sfputil` commands can operate on CPO-backed ports while providing explicit, predictable control over each internal device when required.
 
@@ -238,6 +238,26 @@ class SfpBase(abc.ABC):
         For composite devices, a device selector may be required to
         disambiguate which internal device to read from.
         """
+        ...
+```
+
+```python
+class CompositeSfpBase(SfpBase, abc.ABC):
+    """Interface for a logical SFP composed of multiple SfpBase-derived devices."""
+
+    @abc.abstractmethod
+    def get_internal_devices(self) -> typing.List[SfpBase]:
+        """Return all internal SFP objects that this composite wraps."""
+        ...
+
+    @abc.abstractmethod
+    def get_number_of_internal_devices(self) -> int:
+        """Return the number of internal SFP objects."""
+        ...
+
+    @abc.abstractmethod
+    def get_internal_device(self, name: str) -> SfpBase:
+        """Return a specific internal SFP by name (for example, 'OE1', 'ELS1')."""
         ...
 ```
 
@@ -429,11 +449,6 @@ This HLD does not introduce any new management models or augment existing YANG d
 #### 9.3 Config DB Enhancements  
 
 This HLD introduces **no new Config DB schema** or keys.
-
-- The mapping between interfaces and optical devices (including OE and ELS) is modeled via `optical_devices.json` and the corresponding CONFIG_DB enhancements described in the CPO port-mapping HLD (for example, `associated_devices` and `OPTICAL_DEVICE`).
-- `sfputil` reads this information indirectly via the platform APIs and composite SFP abstractions; it does not write to or extend CONFIG_DB.
-
-As a result, there are no backward-compatibility concerns for configuration files specific to this HLD.
 		
 ### 10. Warmboot and Fastboot Design Impact  
 
@@ -445,34 +460,75 @@ There is no warmboot or fastboot design impact specific to this HLD.
 
 #### Warmboot and Fastboot Performance Impact
 
-Given that `sfputil` is not in the warmboot/fastboot critical path and no new boot-time initialization is added as part of this HLD, there is no expected change in control-plane or data-plane downtime during warmboot or fastboot.
-
-In particular:
-
-- No new blocking I/O, network calls heavy processing is added to boot-time components.
-- No additional dependencies are introduced for services involved in warmboot/fastboot.
-- When the feature is unused (for example, on non-composite platforms), there is effectively zero impact.
+There should be no change in warmboot or fastboot performance from the changes in this HLD.
 
 ### 11. Memory Consumption
 
 There should be no noteworthy change in memory consumption from the changes in this HLD.
 
-- The additional logic in `sfputil` consists of argument parsing, simple branching, and invoking existing platform APIs.
-- No long-lived data structures are introduced; any temporary objects (for example, lists of devices returned by composite SFP APIs) are created and freed within the lifetime of a single CLI invocation.
-- When composite SFP support is not used (for example, on platforms without CPO hardware), the memory footprint is effectively identical to the existing `sfputil` utility.
-
 ### 12. Restrictions/Limitations  
 
+This HLD introduces the `-d/--device` selector and composite SFP abstractions (`CompositeSfpBase`, `CpoSfpOptoeBase`) only at the CLI and platform-API layers. The following limitations apply:
+
+- **Dependence on CPO port-mapping data**  
+  This design assumes that any CPO-backed, composite SFPs are already fully described by the existing CPO port-mapping HLD (for example, via `platform.json` and `optical_devices.json`). If those descriptions are missing or incorrect, `sfputil show devices` output and device selector behavior may be confusing or incomplete. Validation of these files remains the responsibility of the tooling defined in the CPO port-mapping HLD.
+
+
 ### 13. Testing Requirements/Design  
-Explain what kind of unit testing, system testing, regression testing, warmboot/fastboot testing, etc.,
-Ensure that the existing warmboot/fastboot requirements are met. For example, if the current warmboot feature expects maximum of 1 second or zero second data disruption, the same should be met even after the new feature/enhancement is implemented. Explain the same here.
-Example sub-sections for unit test cases and system test cases are given below. 
+
+Testing for this HLD focuses on three areas:
+
+- Correctness of the `SfpBase` / `CompositeSfpBase` / `CpoSfpOptoeBase` contracts for composite vs. non-composite ports.
+- Correct parsing and forwarding of the optional `-d/--device` selector by `sfputil`, including user-facing error handling.
+- Regression coverage to ensure that existing `sfputil` behavior on non-composite platforms is unchanged and that warmboot/fastboot characteristics remain as described in Section 10.
+
 
 #### 13.1. Unit Test cases  
 
+Unit tests will be added in both the platform base library and the `sfputil` CLI to cover the following:
+
+1. **CompositeSfpBase / CpoSfpOptoeBase contract**
+   - `get_internal_devices()`, `get_internal_device(name)` and `get_number_of_internal_devices()` return the expected OE/ELS devices for a CPO-backed port.
+   - `get_internal_device(name)` raises a clear error for invalid device names.
+   - `read_eeprom(page, offset, size, device=None)` on a composite CPO SFP raises when `device` is omitted for operations that require a selector, and succeeds when a valid internal device name (for example, `OE1`, `ELS1`) is provided.
+
+2. **Non-composite SFP behavior**
+   - `SfpOptoeBase` implementations accept calls where `device is None`.
+   - Any non-empty `device` on a non-composite SFP results in a clear error (for example, `ValueError`), confirming that the selector is not valid on those ports.
+
+3. **sfputil CLI argument parsing and routing**
+   - `sfputil read-eeprom`, `write-eeprom`, `power`, `lpmode`, `reset`, `firmware` and selected `debug` subcommands correctly accept and validate the `-d/--device` option.
+   - For composite ports, omitting `-d/--device` on operations that require a selector causes `sfputil` to surface a helpful error message that:
+     - Identifies the port as composite, and
+     - Suggests running `sfputil show devices -p <port>` to discover valid device names.
+   - For composite ports, operations that support "all devices" semantics (for example, `power`, `lpmode`, `reset`) behave as follows:
+     - Without `-d/--device`, the underlying composite SFP implementation is invoked once and applies to all internal devices.
+     - With `-d/--device`, only the targeted internal device is affected.
+
+4. **sfputil show devices behavior**
+   - On a composite port, `sfputil show devices -p <port>` lists all internal devices (names, types and any relevant metadata) consistent with the CPO port-mapping / `optical_devices.json` description.
+   - On a non-composite port, `sfputil show devices -p <port>` produces a clear, non-fatal indication that the port is not composite.
+
+5. **Backward compatibility and regression tests**
+   - Existing `sfputil` commands invoked without `-d/--device` on non-composite ports produce the same outputs and exit codes as before.
+   - The presence of composite SFP classes does not change behavior on platforms that do not implement `CompositeSfpBase`.
+   - No additional warmboot/fastboot-specific tests are required beyond existing SONiC test coverage, because `sfputil` remains an on-demand CLI tool and is not part of the boot-critical path.
+
 #### 13.2. System Test cases
+
+End-to-end system testing will be performed on hardware platforms that:
+
+- Provide CPO-backed ports described by `optical_devices.json` and `platform.json` as in the CPO port-mapping HLD, and
+- Provide only non-composite ports, to validate backward compatibility.
+
+Representative system test scenarios include:
+
+| Test Case |
+|-----------|
+| Load a SONiC image with a device with co-packaged optics. Verify that `sfputil show devices -p <port>` lists the expected OE/ELS devices and that the names match those defined in `optical_devices.json`. |
+| On CPO-backed ports, run `sfputil read-eeprom`, `write-eeprom`, `power`, `lpmode`, `reset`, and `firmware` subcommands with and without `-p/--port` and `-d/--device`. Confirm that: (1) operations with a valid `-d/--device` act only on the targeted internal device, (2) operations that default to all devices behave as expected when `-d/--device` is omitted, and (3) user-facing error messages for missing/invalid selectors are clear and actionable. |
+| On non-composite-only platforms, run a regression suite of existing `sfputil` commands (without `-d/--device`) and confirm that outputs, exit codes and performance characteristics are unchanged compared to a baseline image without this feature. |
 
 ### 14. Open/Action items - if any 
 
-	
-NOTE: All the sections and sub-sections given above are mandatory in the design document. Users can add additional sections/sub-sections if required.
+At this time there are no open design issues specific to this HLD beyond implementing the behavior and tests described above.
