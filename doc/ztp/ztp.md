@@ -1,6 +1,6 @@
 # Zero Touch Provisioning (ZTP)
 
-### Rev 0.9
+### Rev 1.0
 
 ## Table of Contents
 - [1. Revision](#1-revision)
@@ -13,6 +13,7 @@
   - [3.5 ZTP Service](#35-ztp-service)
   - [3.6 Start and exit conditions](#36-start-and-exit-conditions)
   - [3.7 Provisioning over in-band network](#37-provisioning-over-in-band-network)
+    - [3.7.1 HWSKU Discovery](#371-hwsku-discovery)
   - [3.8 Component Interactions](#38-components-interactions)
 - [4. Chronology of Events](#4-chronology-of-events)
   - [4.1 SONiC ZTP Flow Diagram](#41-sonic-ztp-flow-diagram)
@@ -33,6 +34,7 @@
 | v0.1 |   03/06/2019   |   Rajendra Dendukuri   | Initial version                   |
 | v0.2 | 04/17/2019 | Rajendra Dendukuri | Added: suspend-exit-code, in-band provisioning, interaction with updategraph, Test plan |
 | v0.9 | 09/17/2019 | Rajendra Dendukuri | Update the design document as per the ZTP code |
+| v1.0 | 04/06/2026 | Anders Linn | Add HWSKU discovery (section 3.7.1), HWSKU cache on firmware upgrade resume, update requirements and test cases |
 
 
 ## 2. Requirements
@@ -59,8 +61,9 @@
 21. All files created during a ZTP session must be stored in a persistent location for user to inspect. When a new ZTP session is started, this data is deleted. */var/lib/ztp* is the location where this data is stored.
 22. ZTP feature must be a build time selection option. By default it is not included in the image.
 23. Provide optional security features to allow encryption and authentication while exchanging sensitive information between the switch and remote provisioning server.
-24. ZTP must be able to provisioning the switch over in-band network in addition to out-of-band management network. The first interface to provide provisioning data will be used and any provisioning data provided by other interfaces is ignored. 
+24. ZTP must be able to provisioning the switch over in-band network in addition to out-of-band management network. The first interface to provide provisioning data will be used and any provisioning data provided by other interfaces is ignored.
 25. Both IPv4 and IPv6 DHCP discovery and ZTP provisioning should be supported.
+26. When a switch supports multiple port speed or breakout configurations, ZTP must be able to cycle through available hardware SKUs (HWSKUs) during in-band discovery to find a configuration that establishes connectivity to the provisioning server.
 
 ## 3. Functional Description
 
@@ -763,7 +766,34 @@ SONiC ZTP supports reboot and resume while a ZTP session is in progress. To hand
 
 A configuration option is provided in the ZTP configuration file *ztp_cfg.json* to enable or disable in-band provisioning feature. Use *"feat-inband" : false* in */host/ztp/ztp_cfg.json* to disable ZTP in-band provisioning. Provisioning over in-band network is enabled by default when the ZTP package is included.
 
+### 3.7.1 HWSKU Discovery
 
+On switches that support multiple port speed or breakout configurations, the active hardware SKU (HWSKU) determines which ports exist and at what speed. If the connected ZTP peer uses a port configuration that does not match the switch's current HWSKU, DHCP discovery will never succeed regardless of how long ZTP waits.
+
+To address this, ZTP supports automatic HWSKU cycling during in-band discovery. When enabled, ZTP iterates through all available HWSKUs returned by `get_available_hwskus()`, loading each one via `config reload` and restarting DHCP discovery. Cycling starts from the currently loaded HWSKU so that the most likely configuration is tried first.
+
+**Cycling logic:**
+
+Two independent timeouts govern when ZTP advances to the next HWSKU:
+
+- **`hwsku-port-up-timeout`** (default 180s): If no front-panel ports have come up since the last HWSKU was loaded, cycle to the next HWSKU. This handles the case where the HWSKU is simply wrong for the connected hardware.
+- **`hwsku-discovery-timeout`** (default 600s): If DHCP has not produced a ZTP JSON URL within this window — even if ports are up — cycle to the next HWSKU. This handles the case where ports are up but the ZTP server is not reachable on this HWSKU's port configuration.
+
+Once any interface successfully completes DHCP negotiation (i.e. receives an IP address), HWSKU cycling is disabled for the remainder of the ZTP session. This prevents cycling away from a valid HWSKU when the ZTP server is temporarily slow to respond.
+
+HWSKUs are cycled in sorted order and wrap around so that all configurations are eventually tried. The HWSKU list is platform-specific and provided by `get_available_hwskus()`.
+
+**Configuration knobs** (set in */host/ztp/ztp_cfg.json*):
+
+| Key | Default | Description |
+|---|---|---|
+| `hwsku-discovery` | `true` | Enable or disable HWSKU cycling |
+| `hwsku-port-up-timeout` | `180` | Seconds to wait for any port to come up before cycling |
+| `hwsku-discovery-timeout` | `600` | Seconds to wait for DHCP success before cycling |
+
+**HWSKU cache:**
+
+The active HWSKU is persisted to */host/ztp/ztp_hwsku* on every HWSKU load. On resume (e.g. after a ZTP-initiated firmware upgrade), ZTP reads this cache and reloads the correct HWSKU before restarting DHCP discovery. This ensures that a firmware upgrade that changes the default HWSKU does not break in-progress ZTP sessions. See section 3.8 (Image Upgrade) for details.
 
 ### 3.8 Component Interactions
 
@@ -775,7 +805,9 @@ ZTP and updategraph can co-exist in the same SONiC image. However, for updategra
 
 **Image Upgrade**
 
-When a new SONiC image is installed, contents of */etc/sonic* directory are migrated to the newly installed directory. ZTP JSON and ZTP configuration files are also available to the new image as they are stored in */host/ztp* directory. If the image upgrade happened as part of a ZTP session in progress, after booting the new image, ZTP resumes from the point where it left of prior to image switchover. ZTP service waits for configuration migration to complete before taking any action. If after configuration migration, if */etc/sonic/config_db.json* file is not found, ZTP service creates a ZTP configuration that enables all in-band interfaces and performs DHCP discovery on them to obtain connectivity and resume processing the ZTP JSON file. This establishes connectivity to external hosts for provisioning to be completed. 
+When a new SONiC image is installed, contents of */etc/sonic* directory are migrated to the newly installed directory. ZTP JSON and ZTP configuration files are also available to the new image as they are stored in */host/ztp* directory. If the image upgrade happened as part of a ZTP session in progress, after booting the new image, ZTP resumes from the point where it left of prior to image switchover. ZTP service waits for configuration migration to complete before taking any action. If after configuration migration, if */etc/sonic/config_db.json* file is not found, ZTP service creates a ZTP configuration that enables all in-band interfaces and performs DHCP discovery on them to obtain connectivity and resume processing the ZTP JSON file. This establishes connectivity to external hosts for provisioning to be completed.
+
+If HWSKU cycling was active before the reboot, the HWSKU that was in use is cached in */host/ztp/ztp_hwsku*. On resume, ZTP reads this cache and reloads the correct port configuration before restarting interfaces-config and DHCP discovery. This ensures that a firmware upgrade which changes the default HWSKU (e.g. by updating the platform's default port speed) does not cause the resumed ZTP session to fail due to a port configuration mismatch. If the cached HWSKU is missing or no longer valid, ZTP falls back gracefully and HWSKU cycling handles recovery.
 
 There can also be a scenario where on a switch a ZTP is in completed (SUCCESS/FAILED) state. A new SONiC image is installed using *sonic-installer* upgrade tool and the user reboots the switch to boot into new image. In this scenario, contents of */host/ztp* and thus ZTP JSON, ZTP configuration file are accessible to the newly installed image. Since ZTP is in completed state, it will not run again. Only if */etc/sonic/config_db.json* file does not exist, ZTP service creates a ZTP configuration and starts the ZTP procedure afresh. It is up to the user to install configuration migration hooks to migrate changes to new image. More information is available in the [SONiC Configuration Setup Service](https://github.com/rajendra-dendukuri/SONiC/blob/config_setup/doc/ztp/SONiC-config-setup.md) design document.
 
@@ -1166,7 +1198,7 @@ ZTP service can be started in optional debug mode providing more verbose informa
 ## 11. Future
 
 - More predefined plugins can be added as deemed appropriate by wider audience.
-- Automatic port break out of in-band interfaces to detect an active link while performing ZTP discovery.
+- Automatic port breakout of in-band interfaces during ZTP discovery. HWSKU cycling (see section 3.7.1) provides a generalized solution to this problem by cycling through predefined port configurations; however, automatic runtime breakout detection remains a potential future enhancement, contingent on resolving hardware-specific constraints that make it difficult to generalize across platforms.
 
 
 
@@ -1329,6 +1361,12 @@ python3-coverage html --omit="*_pytest*,*test_*,*pkg_resources*,*dist-packages/p
 29. Verify behavior of ZTP service when DHCP Options 225-minigraph_url, 226-acl_url and 67 - ZTP JSON file are all sent by the DHCP server
 
 30. Verify logging of ZTP service
+
+31. Verify that ZTP cycles to the next HWSKU when no ports come up within `hwsku-port-up-timeout`.
+
+32. Verify that HWSKU cycling stops immediately when an interface successfully completes DHCP negotiation.
+
+33. Verify that ZTP correctly restores the cached HWSKU on resume after a firmware upgrade reboot.
 
     
 
@@ -2169,7 +2207,83 @@ python3-coverage html --omit="*_pytest*,*test_*,*pkg_resources*,*dist-packages/p
 
   - This is in addition to providing updategraph service the information learnt from DHCP Option 225, 226
 
-    
+
+
+### Test Case #31
+
+**Objective:** Verify that ZTP cycles to the next HWSKU when no ports come up within `hwsku-port-up-timeout`.
+
+**Test Steps:**
+
+- Boot a switch from factory defaults with no startup configuration present
+- Ensure the switch has multiple HWSKUs available (`get_available_hwskus()` returns at least two)
+- Connect the ZTP peer only to a port that exists in a non-default HWSKU
+- Configure `hwsku-port-up-timeout` to a short value (e.g. 60s) for faster testing
+- Start ZTP
+
+**Expected Results:**
+
+- ZTP loads the default HWSKU and starts DHCP discovery
+- After `hwsku-port-up-timeout` seconds with no ports up, ZTP loads the next HWSKU via `config reload` and restarts DHCP discovery
+- ZTP continues cycling until the correct HWSKU is loaded and the peer port comes up
+- DHCP negotiation completes and ZTP proceeds to download and process the ZTP JSON file
+
+**Additional Tests:**
+
+- Set `hwsku-discovery` to `false` in */host/ztp/ztp_cfg.json*
+  - ZTP does not cycle HWSKUs; discovery remains on the default HWSKU indefinitely
+- All available HWSKUs are tried without DHCP success
+  - ZTP wraps around and starts cycling from the first HWSKU again
+
+
+
+### Test Case #32
+
+**Objective:** Verify that HWSKU cycling stops immediately when an interface successfully completes DHCP negotiation.
+
+**Test Steps:**
+
+- Boot a switch from factory defaults with no startup configuration present
+- Connect the ZTP peer to a port that is present in the default HWSKU
+- Start ZTP with multiple HWSKUs available
+
+**Expected Results:**
+
+- ZTP loads the default HWSKU and starts DHCP discovery
+- An interface receives a DHCP offer and completes negotiation (obtains an IP address)
+- HWSKU cycling is disabled — ZTP does not advance to the next HWSKU even if `hwsku-port-up-timeout` or `hwsku-discovery-timeout` would otherwise expire
+- ZTP proceeds normally to download and process the ZTP JSON file using the current HWSKU
+
+**Additional Tests:**
+
+- Simulate a temporary DHCP stall after an interface has negotiated: ensure ZTP does not cycle the HWSKU when DHCP eventually times out and retries
+
+
+
+### Test Case #33
+
+**Objective:** Verify that ZTP correctly restores the cached HWSKU on resume after a firmware upgrade reboot.
+
+**Test Steps:**
+
+- Boot a switch from factory defaults with no startup configuration present
+- Connect the ZTP peer to a port that exists only in a non-default HWSKU
+- Start ZTP; allow HWSKU cycling to find the correct HWSKU and begin processing a ZTP JSON file
+- As part of the ZTP JSON, perform a firmware upgrade using the firmware plugin and reboot
+- The new firmware changes the default HWSKU (e.g. boots at a different default port speed)
+
+**Expected Results:**
+
+- Before the reboot, the active HWSKU is written to */host/ztp/ztp_hwsku*
+- After booting the new image, ZTP resumes from the point it left off
+- ZTP reads */host/ztp/ztp_hwsku* and reloads the cached HWSKU configuration before restarting DHCP discovery
+- The peer port comes up with the correct HWSKU and ZTP proceeds to complete provisioning
+
+**Additional Tests:**
+
+- Delete */host/ztp/ztp_hwsku* before the reboot
+  - ZTP falls back to the default HWSKU and HWSKU cycling handles recovery
+
 
 ### Test Case #30
 
