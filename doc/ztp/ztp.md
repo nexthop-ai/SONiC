@@ -1,6 +1,6 @@
 # Zero Touch Provisioning (ZTP)
 
-### Rev 1.0
+### Rev 0.10
 
 ## Table of Contents
 - [1. Revision](#1-revision)
@@ -34,7 +34,7 @@
 | v0.1 |   03/06/2019   |   Rajendra Dendukuri   | Initial version                   |
 | v0.2 | 04/17/2019 | Rajendra Dendukuri | Added: suspend-exit-code, in-band provisioning, interaction with updategraph, Test plan |
 | v0.9 | 09/17/2019 | Rajendra Dendukuri | Update the design document as per the ZTP code |
-| v1.0 | 04/06/2026 | Anders Linn | Add HWSKU discovery (section 3.7.1), HWSKU cache on firmware upgrade resume, update requirements and test cases |
+| v0.10 | 04/06/2026 | Anders Linn | Add HWSKU discovery (section 3.7.1), HWSKU cache on firmware upgrade resume, update requirements and test cases |
 
 
 ## 2. Requirements
